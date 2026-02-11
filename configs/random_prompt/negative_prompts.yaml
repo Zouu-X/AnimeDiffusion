@@ -1,0 +1,37 @@
+# Negative prompt templates for anime face generation.
+
+base_negative: >-
+  lowres, bad anatomy, bad hands, text, error, missing fingers,
+  extra digit, fewer digits, cropped, worst quality, low quality,
+  normal quality, jpeg artifacts, signature, watermark, username, blurry
+
+# Additional negative tokens added dynamically based on components.
+conditional_negatives:
+  # When generating close-up face, suppress body artifacts
+  face_focus:
+    - "extra limbs"
+    - "mutated hands"
+    - "poorly drawn face"
+    - "poorly drawn hands"
+    - "mutation"
+    - "deformed"
+    - "ugly"
+    - "duplicate"
+
+  # When generating with specific eye types, suppress eye artifacts
+  detailed_eyes:
+    - "bad eyes"
+    - "extra eyes"
+    - "asymmetric eyes"
+
+  # General quality suppressions
+  quality:
+    - "out of frame"
+    - "disfigured"
+    - "gross proportions"
+    - "malformed limbs"
+    - "missing arms"
+    - "missing legs"
+    - "fused fingers"
+    - "too many fingers"
+    - "long neck"

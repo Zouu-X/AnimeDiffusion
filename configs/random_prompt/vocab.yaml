@@ -1,0 +1,369 @@
+# Vocabulary definitions for anime face prompt generation.
+# Each component has a list of options with weights.
+
+age_style:
+  options:
+    - value: "teen"
+      weight: 0.5
+    - value: "adult"
+      weight: 0.5
+
+face_shape:
+  options:
+    - value: "round face"
+      weight: 1.0
+    - value: "oval face"
+      weight: 1.0
+    - value: "heart-shaped face"
+      weight: 0.8
+    - value: "sharp face"
+      weight: 0.7
+    - value: "soft face"
+      weight: 0.8
+    - value: "angular face"
+      weight: 0.6
+    - value: "delicate face"
+      weight: 0.7
+    - value: "slim face"
+      weight: 0.6
+    - value: "wide face"
+      weight: 0.4
+    - value: "diamond face"
+      weight: 0.5
+
+eyes:
+  options:
+    - value: "blue eyes"
+      weight: 1.0
+    - value: "red eyes"
+      weight: 0.9
+    - value: "green eyes"
+      weight: 0.9
+    - value: "brown eyes"
+      weight: 0.8
+    - value: "golden eyes"
+      weight: 0.8
+    - value: "purple eyes"
+      weight: 0.7
+    - value: "heterochromia"
+      weight: 0.4
+    - value: "cat eyes"
+      weight: 0.5
+    - value: "sharp eyes"
+      weight: 0.6
+    - value: "gentle eyes"
+      weight: 0.6
+    - value: "closed eyes"
+      weight: 0.4
+    - value: "half-closed eyes"
+      weight: 0.4
+    - value: "bright eyes"
+      weight: 0.5
+    - value: "dark eyes"
+      weight: 0.5
+    - value: "tsurime"
+      weight: 0.5
+    - value: "tareme"
+      weight: 0.5
+    - value: "silver eyes"
+      weight: 0.5
+    - value: "amber eyes"
+      weight: 0.6
+    - value: "pink eyes"
+      weight: 0.5
+    - value: "aqua eyes"
+      weight: 0.5
+    - value: "glowing eyes"
+      weight: 0.3
+    - value: "empty eyes"
+      weight: 0.2
+    - value: "sparkling eyes"
+      weight: 0.4
+    - value: "narrow eyes"
+      weight: 0.4
+    - value: "wide eyes"
+      weight: 0.5
+
+nose:
+  options:
+    - value: "small nose"
+      weight: 1.0
+    - value: "button nose"
+      weight: 0.8
+    - value: "pointed nose"
+      weight: 0.6
+    - value: "flat nose"
+      weight: 0.5
+    - value: "delicate nose"
+      weight: 0.7
+    - value: "upturned nose"
+      weight: 0.5
+
+mouth:
+  options:
+    - value: "small mouth"
+      weight: 1.0
+    - value: "thin lips"
+      weight: 0.7
+    - value: "full lips"
+      weight: 0.6
+    - value: "pouty lips"
+      weight: 0.5
+    - value: "open mouth"
+      weight: 0.6
+    - value: "closed mouth"
+      weight: 0.8
+    - value: "fang"
+      weight: 0.3
+    - value: "lip gloss"
+      weight: 0.4
+
+hair:
+  options:
+    - value: "long blonde hair"
+      weight: 1.0
+    - value: "short black hair"
+      weight: 0.9
+    - value: "twintails"
+      weight: 0.7
+    - value: "silver hair, long hair"
+      weight: 0.7
+    - value: "red hair, ponytail"
+      weight: 0.7
+    - value: "blue hair, bob cut"
+      weight: 0.6
+    - value: "pink hair, wavy hair"
+      weight: 0.7
+    - value: "green hair, short hair"
+      weight: 0.5
+    - value: "purple hair, braids"
+      weight: 0.6
+    - value: "white hair, straight hair"
+      weight: 0.6
+    - value: "brown hair, medium hair"
+      weight: 0.8
+    - value: "orange hair, messy hair"
+      weight: 0.5
+    - value: "black hair, hime cut"
+      weight: 0.6
+    - value: "blonde hair, side ponytail"
+      weight: 0.6
+    - value: "grey hair, bun"
+      weight: 0.4
+    - value: "light blue hair, long hair"
+      weight: 0.5
+    - value: "dark red hair, curly hair"
+      weight: 0.4
+    - value: "multicolored hair"
+      weight: 0.3
+    - value: "gradient hair"
+      weight: 0.3
+    - value: "twin braids"
+      weight: 0.5
+    - value: "drill hair"
+      weight: 0.4
+    - value: "ahoge, brown hair"
+      weight: 0.5
+    - value: "hair over one eye, black hair"
+      weight: 0.4
+    - value: "very long hair, platinum blonde hair"
+      weight: 0.5
+    - value: "short white hair"
+      weight: 0.4
+
+expression:
+  options:
+    - value: "smile"
+      weight: 1.0
+    - value: "serious"
+      weight: 0.8
+    - value: "crying"
+      weight: 0.5
+    - value: "laughing"
+      weight: 0.6
+    - value: "surprised"
+      weight: 0.6
+    - value: "angry"
+      weight: 0.5
+    - value: "blush"
+      weight: 0.7
+    - value: "shy"
+      weight: 0.5
+    - value: "smirk"
+      weight: 0.5
+    - value: "expressionless"
+      weight: 0.4
+    - value: "happy"
+      weight: 0.8
+    - value: "sad"
+      weight: 0.5
+    - value: "embarrassed"
+      weight: 0.4
+    - value: "determined"
+      weight: 0.4
+    - value: "sleepy"
+      weight: 0.3
+
+# Compatibility rules: specify combos to avoid.
+# Each rule: {component_a, value_a, component_b, value_b}
+compatibility_exclusions:
+  - component_a: "eyes"
+    value_a: "closed eyes"
+    component_b: "expression"
+    value_b: "surprised"
+  - component_a: "eyes"
+    value_a: "closed eyes"
+    component_b: "expression"
+    value_b: "wide eyes"
+  - component_a: "mouth"
+    value_a: "open mouth"
+    component_b: "expression"
+    value_b: "serious"
+  - component_a: "mouth"
+    value_a: "fang"
+    component_b: "expression"
+    value_b: "crying"
+
+pose_tokens:
+  options:
+    - value: "facing viewer"
+      min_yaw: -3.0
+      max_yaw: 3.0
+      min_pitch: -3.0
+      max_pitch: 3.0
+      weight: 1.0
+    - value: "looking to the side"
+      min_yaw: 8.0
+      max_yaw: 15.0
+      min_pitch: -5.0
+      max_pitch: 5.0
+      weight: 0.6
+    - value: "looking away"
+      min_yaw: -15.0
+      max_yaw: -8.0
+      min_pitch: -5.0
+      max_pitch: 5.0
+      weight: 0.6
+    - value: "looking up"
+      min_yaw: -5.0
+      max_yaw: 5.0
+      min_pitch: 8.0
+      max_pitch: 15.0
+      weight: 0.5
+    - value: "looking down"
+      min_yaw: -5.0
+      max_yaw: 5.0
+      min_pitch: -15.0
+      max_pitch: -8.0
+      weight: 0.5
+    - value: "slight turn"
+      min_yaw: 3.0
+      max_yaw: 8.0
+      min_pitch: -3.0
+      max_pitch: 3.0
+      weight: 0.7
+    - value: "slight turn left"
+      min_yaw: -8.0
+      max_yaw: -3.0
+      min_pitch: -3.0
+      max_pitch: 3.0
+      weight: 0.7
+    - value: "tilted head"
+      min_yaw: -5.0
+      max_yaw: 5.0
+      min_pitch: 3.0
+      max_pitch: 8.0
+      weight: 0.5
+
+style_modifiers:
+  options:
+    - value: "masterpiece"
+      weight: 1.0
+    - value: "best quality"
+      weight: 1.0
+    - value: "ultra-detailed"
+      weight: 0.8
+    - value: "illustration"
+      weight: 0.7
+    - value: "anime coloring"
+      weight: 0.6
+    - value: "detailed face"
+      weight: 0.8
+    - value: "beautiful detailed eyes"
+      weight: 0.7
+    - value: "1girl"
+      weight: 0.9
+    - value: "solo"
+      weight: 0.8
+    - value: "upper body"
+      weight: 0.6
+    - value: "portrait"
+      weight: 0.5
+    - value: "close-up"
+      weight: 0.4
+    - value: "face focus"
+      weight: 0.5
+    - value: "absurdres"
+      weight: 0.4
+    - value: "highres"
+      weight: 0.6
+
+lighting:
+  options:
+    - value: "natural lighting"
+      weight: 1.0
+    - value: "soft lighting"
+      weight: 0.9
+    - value: "dramatic lighting"
+      weight: 0.6
+    - value: "studio lighting"
+      weight: 0.5
+    - value: "backlighting"
+      weight: 0.5
+    - value: "warm lighting"
+      weight: 0.6
+    - value: "cold lighting"
+      weight: 0.4
+    - value: "rim lighting"
+      weight: 0.4
+    - value: "cinematic lighting"
+      weight: 0.5
+    - value: "ambient lighting"
+      weight: 0.5
+    - value: "sunlight"
+      weight: 0.6
+    - value: "moonlight"
+      weight: 0.3
+
+background:
+  options:
+    - value: "simple background"
+      weight: 1.0
+    - value: "white background"
+      weight: 0.8
+    - value: "gradient background"
+      weight: 0.6
+    - value: "blurry background"
+      weight: 0.7
+    - value: "school background"
+      weight: 0.5
+    - value: "outdoor background"
+      weight: 0.5
+    - value: "night sky"
+      weight: 0.4
+    - value: "cherry blossoms"
+      weight: 0.4
+    - value: "indoors"
+      weight: 0.5
+    - value: "classroom"
+      weight: 0.4
+    - value: "city background"
+      weight: 0.4
+    - value: "fantasy background"
+      weight: 0.3
+    - value: "starry sky"
+      weight: 0.3
+    - value: "sunset"
+      weight: 0.4
+    - value: "abstract background"
+      weight: 0.3
