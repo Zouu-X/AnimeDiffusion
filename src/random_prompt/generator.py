@@ -122,25 +122,36 @@ def generate_shard(
     diversity: DiversityTracker,
     telemetry: RejectionTelemetry,
 ) -> list[PromptRecord]:
-    """Generate all records for a single shard."""
+    """Generate exactly records_per_shard valid records or raise."""
     shard_seed = derive_shard_seed(base_seed, shard_id)
     rng = random.Random(shard_seed)
     sampler = ComponentSampler(vocab)
 
     records = []
-    for i in range(records_per_shard):
+    failed_slots = 0
+    max_failed_slots = records_per_shard * 10
+    while len(records) < records_per_shard:
+        i = len(records)
         record = generate_record(
             sampler, negative_config, rng, shard_id, i,
             dedup, diversity, telemetry,
         )
-        if record is not None:
-            # Validate record fields
-            from dataclasses import asdict
-            violations = lint_record_fields(asdict(record))
-            if violations:
-                telemetry.record("lint_record")
-                continue
-            records.append(record)
+        if record is None:
+            failed_slots += 1
+            if failed_slots >= max_failed_slots:
+                raise RuntimeError(
+                    f"Unable to fill shard {shard_id} after "
+                    f"{failed_slots} failed slots"
+                )
+            continue
+
+        # Validate record fields
+        from dataclasses import asdict
+        violations = lint_record_fields(asdict(record))
+        if violations:
+            telemetry.record("lint_record")
+            continue
+        records.append(record)
 
     return records
 
@@ -197,7 +208,7 @@ def run(
 
     # Export diversity report
     diversity_report_path = output_dir / "diversity_report.json"
-    report = diversity.export_report(diversity_report_path)
+    diversity.export_report(diversity_report_path)
     print(f"  Diversity report: {diversity_report_path}")
 
     # Check thresholds and report
@@ -211,8 +222,15 @@ def run(
 
     # Finalize (writes manifest, or raises if thresholds not met)
     try:
+        if total_generated != count:
+            raise FinalizationError(
+                f"Record count mismatch before finalization: "
+                f"generated={total_generated}, requested={count}"
+            )
+
         manifest_path = exporter.finalize(
             diversity, seed, config_hash, count,
+            rejection_counts=telemetry.summary(),
         )
         print(f"  Manifest: {manifest_path}")
         print(f"  Output: {exporter.jsonl_path}")

@@ -53,9 +53,16 @@ class Exporter:
         seed: int,
         config_hash: str,
         total_requested: int,
+        rejection_counts: dict[str, int] | None = None,
     ) -> Path:
         """Write manifest and finalize. Raises FinalizationError if
         diversity thresholds are not met."""
+        if self._records_written != total_requested:
+            raise FinalizationError(
+                "Record count mismatch: "
+                f"generated={self._records_written}, requested={total_requested}"
+            )
+
         if not diversity_tracker.all_thresholds_met():
             results = diversity_tracker.check_thresholds()
             failures = {
@@ -78,6 +85,8 @@ class Exporter:
             "total_requested": total_requested,
             "output_file": self._jsonl_path.name,
             "output_hash": file_hash,
+            "rejection_counts": rejection_counts or {},
+            "rejection_total": sum((rejection_counts or {}).values()),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
