@@ -21,8 +21,8 @@ def load_vocab(config_dir: Path | None = None) -> dict:
         vocab = yaml.safe_load(f)
 
     required_components = [
-        "age_style", "face_shape", "eyes", "nose", "mouth",
-        "hair", "expression", "style_modifiers", "lighting", "background",
+        "subject", "face_shape", "eyes", "nose", "mouth",
+        "hair_color", "hair_style", "expression", "style_modifiers", "lighting", "background",
     ]
     for comp in required_components:
         if comp not in vocab:
@@ -31,11 +31,6 @@ def load_vocab(config_dir: Path | None = None) -> dict:
             raise ValueError(f"Component '{comp}' missing 'options' list")
         if not vocab[comp]["options"]:
             raise ValueError(f"Component '{comp}' has empty options list")
-
-    # Validate age_style is restricted to teen/adult
-    age_values = {opt["value"] for opt in vocab["age_style"]["options"]}
-    if not age_values <= {"teen", "adult"}:
-        raise ValueError(f"age_style must only contain 'teen'/'adult', got {age_values}")
 
     return vocab
 

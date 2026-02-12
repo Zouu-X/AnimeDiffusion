@@ -24,43 +24,6 @@ class WeightedSampler:
         return rng.choices(self._values, weights=self._weights, k=1)[0]
 
 
-class PoseSampler:
-    """Samples yaw/pitch uniformly from [-15, 15] and maps to a pose token."""
-
-    def __init__(self, pose_tokens: list[dict]) -> None:
-        self._tokens = pose_tokens
-
-    def sample(self, rng: random.Random) -> tuple[float, float, str]:
-        """Return (yaw, pitch, pose_token)."""
-        yaw = rng.uniform(-15.0, 15.0)
-        pitch = rng.uniform(-15.0, 15.0)
-        token = self._match_token(yaw, pitch)
-        return yaw, pitch, token
-
-    def _match_token(self, yaw: float, pitch: float) -> str:
-        """Find the best matching pose token for given yaw/pitch."""
-        best = None
-        best_dist = float("inf")
-        for t in self._tokens:
-            mid_yaw = (t["min_yaw"] + t["max_yaw"]) / 2
-            mid_pitch = (t["min_pitch"] + t["max_pitch"]) / 2
-            if t["min_yaw"] <= yaw <= t["max_yaw"] and t["min_pitch"] <= pitch <= t["max_pitch"]:
-                dist = (yaw - mid_yaw) ** 2 + (pitch - mid_pitch) ** 2
-                if dist < best_dist:
-                    best_dist = dist
-                    best = t["value"]
-        if best is None:
-            # Fallback: nearest token by center distance
-            for t in self._tokens:
-                mid_yaw = (t["min_yaw"] + t["max_yaw"]) / 2
-                mid_pitch = (t["min_pitch"] + t["max_pitch"]) / 2
-                dist = (yaw - mid_yaw) ** 2 + (pitch - mid_pitch) ** 2
-                if dist < best_dist:
-                    best_dist = dist
-                    best = t["value"]
-        return best
-
-
 class CompatibilityChecker:
     """Checks if a sampled PromptComponents has any incompatible combinations."""
 
@@ -77,17 +40,24 @@ class CompatibilityChecker:
         return True
 
 
+def _truncated_normal(rng: random.Random, sigma: float = 5.0, lo: float = -15.0, hi: float = 15.0) -> float:
+    """Sample from a truncated normal distribution (mean=0)."""
+    while True:
+        v = rng.gauss(0.0, sigma)
+        if lo <= v <= hi:
+            return v
+
+
 class ComponentSampler:
     """Orchestrates sampling of all prompt components."""
 
     def __init__(self, vocab: dict) -> None:
         self._samplers: dict[str, WeightedSampler] = {}
-        for key in ["age_style", "face_shape", "eyes", "nose", "mouth",
-                     "hair", "expression", "lighting", "background"]:
+        for key in ["subject", "face_shape", "eyes", "nose", "mouth",
+                     "hair_color", "hair_style", "expression", "lighting", "background"]:
             self._samplers[key] = WeightedSampler(vocab[key]["options"])
 
         self._style_sampler = WeightedSampler(vocab["style_modifiers"]["options"])
-        self._pose_sampler = PoseSampler(vocab.get("pose_tokens", {}).get("options", []))
 
         exclusions = vocab.get("compatibility_exclusions", [])
         self._compat_checker = CompatibilityChecker(exclusions)
@@ -97,7 +67,8 @@ class ComponentSampler:
 
     def sample(self, rng: random.Random) -> PromptComponents:
         """Sample a full set of components. Returns None-compatible check separately."""
-        yaw, pitch, _pose_token = self._pose_sampler.sample(rng)
+        yaw = _truncated_normal(rng, sigma=5.0, lo=-15.0, hi=15.0)
+        pitch = _truncated_normal(rng, sigma=5.0, lo=-15.0, hi=15.0)
 
         n_styles = rng.randint(*self._style_count_range)
         style_pool = set()
@@ -105,12 +76,13 @@ class ComponentSampler:
             style_pool.add(self._style_sampler.sample(rng))
 
         return PromptComponents(
-            age_style=self._samplers["age_style"].sample(rng),
+            subject=self._samplers["subject"].sample(rng),
             face_shape=self._samplers["face_shape"].sample(rng),
             eyes=self._samplers["eyes"].sample(rng),
             nose=self._samplers["nose"].sample(rng),
             mouth=self._samplers["mouth"].sample(rng),
-            hair=self._samplers["hair"].sample(rng),
+            hair_color=self._samplers["hair_color"].sample(rng),
+            hair_style=self._samplers["hair_style"].sample(rng),
             expression=self._samplers["expression"].sample(rng),
             yaw=yaw,
             pitch=pitch,

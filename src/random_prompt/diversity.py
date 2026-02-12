@@ -11,7 +11,8 @@ from .schema import PromptComponents
 # Minimum unique values required per feature.
 DEFAULT_THRESHOLDS = {
     "eyes": 20,
-    "hair": 20,
+    "hair_color": 10,
+    "hair_style": 10,
     "expression": 8,
     "pose": 8,
 }
@@ -28,7 +29,8 @@ class DiversityTracker:
     def record(self, components: PromptComponents) -> None:
         """Record component values for diversity tracking."""
         self._record_value("eyes", components.eyes)
-        self._record_value("hair", components.hair)
+        self._record_value("hair_color", components.hair_color)
+        self._record_value("hair_style", components.hair_style)
         self._record_value("expression", components.expression)
 
         # Quantize pose into buckets for diversity counting

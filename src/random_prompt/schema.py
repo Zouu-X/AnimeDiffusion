@@ -7,12 +7,13 @@ from dataclasses import dataclass, field
 class PromptComponents:
     """Individual sampled components that make up a prompt."""
 
-    age_style: str  # "teen" | "adult"
+    subject: str  # e.g. "1girl, teenage girl" or "1boy, young man"
     face_shape: str
     eyes: str
     nose: str
     mouth: str
-    hair: str
+    hair_color: str
+    hair_style: str
     expression: str
     yaw: float  # [-15, 15]
     pitch: float  # [-15, 15]

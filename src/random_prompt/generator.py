@@ -20,7 +20,7 @@ from .config import (
 )
 from .diversity import DedupTracker, DiversityTracker
 from .exporter import Exporter, FinalizationError
-from .lint import lint_components, lint_positive_prompt, lint_record_fields
+from .lint import lint_components, lint_positive_prompt, lint_record_fields, lint_semantic
 from .sampler import ComponentSampler
 from .schema import PromptRecord
 
@@ -88,6 +88,12 @@ def generate_record(
         prompt_violations = lint_positive_prompt(positive)
         if prompt_violations:
             telemetry.record("lint_positive")
+            continue
+
+        # Semantic lint
+        semantic_violations = lint_semantic(positive)
+        if semantic_violations:
+            telemetry.record("lint_semantic")
             continue
 
         # Dedup check

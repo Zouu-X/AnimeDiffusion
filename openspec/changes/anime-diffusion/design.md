@@ -92,7 +92,7 @@ Rollback strategy:
 - What is the target shard size for optimal downstream training throughput in this environment?
 - Should we include optional caption text fields beyond generation parameters in metadata for future multimodal use?
 ## Answer for the open questions
-- programmatically randomize prompts. 
-- Default inference parameters: steps=20, guidance_scale=7.5, Sampler=EulerAncestralDiscreteScheduler, Seed: Set unique seed for each sample, Resolution=512x512, negative_prompt="lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, normal quality, jpeg artifacts, signature, watermark, username, blurry".
+- Check the codebase, Have created a random prompt generator for diffusion model use.
+- Default inference parameters: steps=20, guidance_scale=7.5, Sampler=EulerAncestralDiscreteScheduler, Seed: Set unique seed for each sample, Resolution=512x512
 - Shard size: 1000 samples per shard.
 - No

@@ -1,26 +1,29 @@
-"""Test: verify age buckets, pose range, and output field completeness."""
+"""Test: verify subject diversity, pose direction, hair fields, and output field completeness."""
 
 import json
 import tempfile
 from pathlib import Path
 
+from src.random_prompt.assembler import assemble_positive
 from src.random_prompt.generator import run
-from src.random_prompt.lint import VALID_AGE_STYLES, YAW_RANGE, PITCH_RANGE
+from src.random_prompt.lint import YAW_RANGE, PITCH_RANGE
 from src.random_prompt.sampler import ComponentSampler
 from src.random_prompt.config import load_vocab
 import random
 
 
-def test_age_style_restricted():
-    """age_style sampler must only produce 'teen' or 'adult'."""
+def test_subject_diversity():
+    """Subject sampler must produce both '1girl' and '1boy' subjects."""
     vocab = load_vocab()
     sampler = ComponentSampler(vocab)
     rng = random.Random(123)
+    subjects = set()
     for _ in range(500):
         components = sampler.sample(rng)
-        assert components.age_style in VALID_AGE_STYLES, (
-            f"Got invalid age_style: {components.age_style}"
-        )
+        subjects.add(components.subject)
+    subject_str = " ".join(subjects)
+    assert "1girl" in subject_str, "Expected at least one '1girl' subject"
+    assert "1boy" in subject_str, "Expected at least one '1boy' subject"
 
 
 def test_pose_within_bounds():
@@ -35,6 +38,35 @@ def test_pose_within_bounds():
         )
         assert PITCH_RANGE[0] <= components.pitch <= PITCH_RANGE[1], (
             f"pitch out of range: {components.pitch}"
+        )
+
+
+def test_single_pose_direction():
+    """Assembled prompts must contain at most one 'looking' direction token."""
+    vocab = load_vocab()
+    sampler = ComponentSampler(vocab)
+    rng = random.Random(789)
+    looking_tokens = {"looking to the side", "looking away", "looking up", "looking down"}
+    for _ in range(500):
+        components = sampler.sample(rng)
+        prompt = assemble_positive(components)
+        tokens = [t.strip().lower() for t in prompt.split(",")]
+        found = [t for t in tokens if t in looking_tokens]
+        assert len(found) <= 1, (
+            f"Multiple looking directions in prompt: {found}"
+        )
+
+
+def test_hair_has_color():
+    """Sampled components must have a non-empty hair_color containing a color keyword."""
+    vocab = load_vocab()
+    sampler = ComponentSampler(vocab)
+    rng = random.Random(321)
+    for _ in range(500):
+        components = sampler.sample(rng)
+        assert components.hair_color, "hair_color must not be empty"
+        assert "hair" in components.hair_color.lower(), (
+            f"hair_color should contain 'hair': {components.hair_color}"
         )
 
 

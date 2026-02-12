@@ -13,12 +13,13 @@ from src.random_prompt.schema import PromptComponents, PromptRecord
 
 def _make_components(**overrides) -> PromptComponents:
     defaults = dict(
-        age_style="teen",
+        subject="1girl, teenage girl",
         face_shape="round face",
         eyes="blue eyes",
         nose="small nose",
         mouth="small mouth",
-        hair="long blonde hair",
+        hair_color="blonde hair",
+        hair_style="long hair",
         expression="smile",
         yaw=0.0,
         pitch=0.0,
@@ -44,10 +45,10 @@ def test_diversity_tracker_counts():
 
 def test_below_threshold_blocks_finalization():
     """When diversity thresholds are not met, finalization must raise."""
-    tracker = DiversityTracker(thresholds={"eyes": 5, "hair": 5, "expression": 3, "pose": 3})
+    tracker = DiversityTracker(thresholds={"eyes": 5, "hair_color": 5, "hair_style": 5, "expression": 3, "pose": 3})
     # Only record 2 unique eyes — below threshold of 5
-    tracker.record(_make_components(eyes="blue eyes", hair="long blonde hair", expression="smile"))
-    tracker.record(_make_components(eyes="red eyes", hair="short black hair", expression="serious"))
+    tracker.record(_make_components(eyes="blue eyes", hair_color="blonde hair", hair_style="long hair", expression="smile"))
+    tracker.record(_make_components(eyes="red eyes", hair_color="black hair", hair_style="short hair", expression="serious"))
 
     assert not tracker.all_thresholds_met()
 
@@ -69,11 +70,11 @@ def test_below_threshold_blocks_finalization():
 
 def test_above_threshold_allows_finalization():
     """When diversity thresholds are met, finalization should succeed."""
-    tracker = DiversityTracker(thresholds={"eyes": 2, "hair": 2, "expression": 2, "pose": 2})
+    tracker = DiversityTracker(thresholds={"eyes": 2, "hair_color": 2, "hair_style": 2, "expression": 2, "pose": 2})
     # Record enough unique values
-    tracker.record(_make_components(eyes="blue eyes", hair="long blonde hair",
+    tracker.record(_make_components(eyes="blue eyes", hair_color="blonde hair", hair_style="long hair",
                                     expression="smile", yaw=-10, pitch=-10))
-    tracker.record(_make_components(eyes="red eyes", hair="short black hair",
+    tracker.record(_make_components(eyes="red eyes", hair_color="black hair", hair_style="short hair",
                                     expression="serious", yaw=10, pitch=10))
 
     assert tracker.all_thresholds_met()

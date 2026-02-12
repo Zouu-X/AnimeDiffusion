@@ -13,9 +13,6 @@ BANNED_POSITIVE_TOKENS = {
 # Minimum number of comma-separated tokens in a positive prompt.
 MIN_TOKEN_COUNT = 8
 
-# Valid age styles.
-VALID_AGE_STYLES = {"teen", "adult"}
-
 # Pose bounds.
 YAW_RANGE = (-15.0, 15.0)
 PITCH_RANGE = (-15.0, 15.0)
@@ -26,8 +23,8 @@ def lint_components(components: PromptComponents) -> list[str]:
     Empty list means valid."""
     violations = []
 
-    if components.age_style not in VALID_AGE_STYLES:
-        violations.append(f"invalid age_style: {components.age_style}")
+    if not components.subject:
+        violations.append("missing subject")
 
     if not (YAW_RANGE[0] <= components.yaw <= YAW_RANGE[1]):
         violations.append(f"yaw {components.yaw} out of range {YAW_RANGE}")
@@ -37,8 +34,10 @@ def lint_components(components: PromptComponents) -> list[str]:
 
     if not components.eyes:
         violations.append("missing eyes")
-    if not components.hair:
-        violations.append("missing hair")
+    if not components.hair_color:
+        violations.append("missing hair_color")
+    if not components.hair_style:
+        violations.append("missing hair_style")
     if not components.expression:
         violations.append("missing expression")
 
@@ -58,6 +57,23 @@ def lint_positive_prompt(positive_prompt: str) -> list[str]:
         violations.append(
             f"too few tokens: {len(tokens)} < {MIN_TOKEN_COUNT}"
         )
+
+    return violations
+
+
+def lint_semantic(positive_prompt: str) -> list[str]:
+    """Check assembled prompt for semantic contradictions."""
+    violations = []
+    tokens = [t.strip().lower() for t in positive_prompt.split(",")]
+
+    has_closed_eyes = "closed eyes" in tokens
+    looking_tokens = {"looking to the side", "looking away", "looking up", "looking down"}
+    if has_closed_eyes and looking_tokens & set(tokens):
+        violations.append("contradiction: closed eyes with looking direction")
+
+    has_closed_mouth = "closed mouth" in tokens
+    if has_closed_mouth and "laughing" in tokens:
+        violations.append("contradiction: closed mouth with laughing")
 
     return violations
 

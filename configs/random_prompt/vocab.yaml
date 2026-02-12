@@ -1,12 +1,16 @@
 # Vocabulary definitions for anime face prompt generation.
 # Each component has a list of options with weights.
 
-age_style:
+subject:
   options:
-    - value: "teen"
-      weight: 0.5
-    - value: "adult"
-      weight: 0.5
+    - value: "1girl, teenage girl"
+      weight: 0.3
+    - value: "1boy, teenage boy"
+      weight: 0.2
+    - value: "1girl, young woman"
+      weight: 0.3
+    - value: "1boy, young man"
+      weight: 0.2
 
 face_shape:
   options:
@@ -118,58 +122,79 @@ mouth:
     - value: "lip gloss"
       weight: 0.4
 
-hair:
+hair_color:
   options:
-    - value: "long blonde hair"
+    - value: "blonde hair"
       weight: 1.0
-    - value: "short black hair"
+    - value: "black hair"
       weight: 0.9
+    - value: "brown hair"
+      weight: 0.8
+    - value: "silver hair"
+      weight: 0.7
+    - value: "red hair"
+      weight: 0.7
+    - value: "blue hair"
+      weight: 0.6
+    - value: "pink hair"
+      weight: 0.7
+    - value: "green hair"
+      weight: 0.5
+    - value: "purple hair"
+      weight: 0.6
+    - value: "white hair"
+      weight: 0.6
+    - value: "orange hair"
+      weight: 0.5
+    - value: "grey hair"
+      weight: 0.4
+    - value: "light blue hair"
+      weight: 0.5
+    - value: "dark red hair"
+      weight: 0.4
+    - value: "platinum blonde hair"
+      weight: 0.5
+
+hair_style:
+  options:
+    - value: "long hair"
+      weight: 1.0
+    - value: "short hair"
+      weight: 0.9
+    - value: "medium hair"
+      weight: 0.8
+    - value: "ponytail"
+      weight: 0.7
     - value: "twintails"
       weight: 0.7
-    - value: "silver hair, long hair"
-      weight: 0.7
-    - value: "red hair, ponytail"
-      weight: 0.7
-    - value: "blue hair, bob cut"
+    - value: "bob cut"
       weight: 0.6
-    - value: "pink hair, wavy hair"
-      weight: 0.7
-    - value: "green hair, short hair"
-      weight: 0.5
-    - value: "purple hair, braids"
+    - value: "braids"
       weight: 0.6
-    - value: "white hair, straight hair"
-      weight: 0.6
-    - value: "brown hair, medium hair"
-      weight: 0.8
-    - value: "orange hair, messy hair"
-      weight: 0.5
-    - value: "black hair, hime cut"
-      weight: 0.6
-    - value: "blonde hair, side ponytail"
-      weight: 0.6
-    - value: "grey hair, bun"
+    - value: "bun"
       weight: 0.4
-    - value: "light blue hair, long hair"
-      weight: 0.5
-    - value: "dark red hair, curly hair"
+    - value: "hime cut"
+      weight: 0.6
+    - value: "wavy hair"
+      weight: 0.7
+    - value: "curly hair"
       weight: 0.4
-    - value: "multicolored hair"
-      weight: 0.3
-    - value: "gradient hair"
-      weight: 0.3
-    - value: "twin braids"
+    - value: "straight hair"
+      weight: 0.6
+    - value: "messy hair"
       weight: 0.5
+    - value: "side ponytail"
+      weight: 0.6
     - value: "drill hair"
       weight: 0.4
-    - value: "ahoge, brown hair"
+    - value: "ahoge"
       weight: 0.5
-    - value: "hair over one eye, black hair"
+    - value: "hair over one eye"
       weight: 0.4
-    - value: "very long hair, platinum blonde hair"
+    - value: "very long hair"
       weight: 0.5
-    - value: "short white hair"
-      weight: 0.4
+    - value: "twin braids"
+      weight: 0.5
 
 expression:
   options:
@@ -223,57 +248,18 @@ compatibility_exclusions:
     value_a: "fang"
     component_b: "expression"
     value_b: "crying"
-
-pose_tokens:
-  options:
-    - value: "facing viewer"
-      min_yaw: -3.0
-      max_yaw: 3.0
-      min_pitch: -3.0
-      max_pitch: 3.0
-      weight: 1.0
-    - value: "looking to the side"
-      min_yaw: 8.0
-      max_yaw: 15.0
-      min_pitch: -5.0
-      max_pitch: 5.0
-      weight: 0.6
-    - value: "looking away"
-      min_yaw: -15.0
-      max_yaw: -8.0
-      min_pitch: -5.0
-      max_pitch: 5.0
-      weight: 0.6
-    - value: "looking up"
-      min_yaw: -5.0
-      max_yaw: 5.0
-      min_pitch: 8.0
-      max_pitch: 15.0
-      weight: 0.5
-    - value: "looking down"
-      min_yaw: -5.0
-      max_yaw: 5.0
-      min_pitch: -15.0
-      max_pitch: -8.0
-      weight: 0.5
-    - value: "slight turn"
-      min_yaw: 3.0
-      max_yaw: 8.0
-      min_pitch: -3.0
-      max_pitch: 3.0
-      weight: 0.7
-    - value: "slight turn left"
-      min_yaw: -8.0
-      max_yaw: -3.0
-      min_pitch: -3.0
-      max_pitch: 3.0
-      weight: 0.7
-    - value: "tilted head"
-      min_yaw: -5.0
-      max_yaw: 5.0
-      min_pitch: 3.0
-      max_pitch: 8.0
-      weight: 0.5
+  - component_a: "mouth"
+    value_a: "closed mouth"
+    component_b: "expression"
+    value_b: "laughing"
+  - component_a: "mouth"
+    value_a: "closed mouth"
+    component_b: "expression"
+    value_b: "surprised"
+  - component_a: "eyes"
+    value_a: "closed eyes"
+    component_b: "expression"
+    value_b: "surprised"
 
 style_modifiers:
   options:
@@ -291,8 +277,6 @@ style_modifiers:
       weight: 0.8
     - value: "beautiful detailed eyes"
       weight: 0.7
-    - value: "1girl"
-      weight: 0.9
     - value: "solo"
       weight: 0.8
     - value: "upper body"

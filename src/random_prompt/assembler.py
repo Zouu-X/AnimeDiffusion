@@ -9,19 +9,24 @@ _QUALITY_TAGS_IN_POSITIVE = {"masterpiece", "best quality", "highres", "absurdre
 
 
 def _pose_descriptor(yaw: float, pitch: float) -> str:
-    """Convert yaw/pitch to a textual pose descriptor."""
-    parts = []
+    """Convert yaw/pitch to a single-direction textual pose descriptor.
+
+    Picks the dominant axis (larger absolute value) and emits one tag.
+    If both |yaw| and |pitch| <= 3, emits "facing viewer".
+    """
     if abs(yaw) <= 3 and abs(pitch) <= 3:
         return "facing viewer"
-    if yaw > 3:
-        parts.append("looking to the side")
-    elif yaw < -3:
-        parts.append("looking away")
-    if pitch > 3:
-        parts.append("looking up")
-    elif pitch < -3:
-        parts.append("looking down")
-    return ", ".join(parts) if parts else "facing viewer"
+    # Choose the dominant axis
+    if abs(yaw) >= abs(pitch):
+        if yaw > 0:
+            return "looking to the side"
+        else:
+            return "looking away"
+    else:
+        if pitch > 0:
+            return "looking up"
+        else:
+            return "looking down"
 
 
 def assemble_positive(components: PromptComponents) -> str:
@@ -39,14 +44,13 @@ def assemble_positive(components: PromptComponents) -> str:
     tokens.extend(quality_first)
     tokens.extend(other_style)
 
-    # 2) Subject / age
-    if components.age_style == "teen":
-        tokens.append("1girl")
-    else:
-        tokens.append("1girl")  # adult anime characters still use 1girl tag
+    # 2) Subject (e.g. "1girl, teenage girl" or "1boy, young man")
+    for tag in components.subject.split(", "):
+        tokens.append(tag)
 
-    # 3) Appearance: hair, eyes, face, nose, mouth
-    tokens.append(components.hair)
+    # 3) Appearance: hair color, hair style, eyes, face, nose, mouth
+    tokens.append(components.hair_color)
+    tokens.append(components.hair_style)
     tokens.append(components.eyes)
     tokens.append(components.face_shape)
     tokens.append(components.nose)
@@ -67,7 +71,7 @@ def assemble_positive(components: PromptComponents) -> str:
     if components.background:
         tokens.append(components.background)
 
-    # Deduplicate while preserving order (1girl may appear in style_modifiers and subject)
+    # Deduplicate while preserving order
     seen = set()
     deduped = []
     for t in tokens:
