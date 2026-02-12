@@ -1,0 +1,12 @@
+model_id: "hakurei/waifu-diffusion-v1-4"
+prompts_path: "output/full/prompts.jsonl"
+workspace_dir: "output/images/workspace"
+shards_dir: "output/images/shards"
+report_dir: "output/images"
+batch_size: 8
+shard_size: 1000
+target_count: 100000
+num_inference_steps: 20
+guidance_scale: 7.5
+scheduler: "EulerAncestralDiscreteScheduler"
+resolution: 512

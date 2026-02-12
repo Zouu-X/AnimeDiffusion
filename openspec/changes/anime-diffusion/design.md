@@ -1,12 +1,12 @@
 ## Context
 
-This change introduces a production-style data generation pipeline that creates 100,000 anime face images at 512x512 using `hakurei/waifu-diffusion-v1-3` and packages outputs in WebDataset shards. The current repository has no existing OpenSpec capability specs, so this design must define a clear architecture that can be implemented in modular steps and resumed after interruption. The primary constraints are deterministic reproducibility, large-volume output handling, and strict output conformance (image size/count and shard integrity).
+This change introduces a production-style data generation pipeline that creates 100,000 anime face images at 512x512 using `hakurei/waifu-diffusion-v1-4` (loaded via `StableDiffusionPipeline.from_single_file()` from the `wd-1-4-anime_e1.ckpt` checkpoint) and packages outputs in WebDataset shards. The current repository has no existing OpenSpec capability specs, so this design must define a clear architecture that can be implemented in modular steps and resumed after interruption. The primary constraints are deterministic reproducibility, large-volume output handling, and strict output conformance (image size/count and shard integrity).
 
 ## Goals / Non-Goals
 
 **Goals:**
 - Generate exactly 100,000 images with fixed 512x512 resolution.
-- Use Waifu Diffusion v1.3 as the single generation model baseline.
+- Use Waifu Diffusion v1.4 as the single generation model baseline.
 - Emit WebDataset-compatible shards (`.tar`) with per-sample image and metadata payloads.
 - Ensure deterministic behavior via seed management and persisted progress state.
 - Support restart/resume without duplicating already materialized samples.
@@ -28,7 +28,7 @@ This change introduces a production-style data generation pipeline that creates 
   - Fully distributed workflow engine: scalable, but unnecessary complexity for initial version.
 
 2. Runtime stack: Diffusers-based inference with explicit scheduler/precision controls
-- Decision: Use Hugging Face Diffusers pipeline loading `hakurei/waifu-diffusion-v1-3`, with configuration captured in run manifests.
+- Decision: Use Hugging Face Diffusers pipeline loading `hakurei/waifu-diffusion-v1-4` via `from_single_file()`, with configuration captured in run manifests.
 - Rationale: Native compatibility with the requested model and predictable configuration surface.
 - Alternatives considered:
   - Custom latent diffusion inference code: more control, much higher implementation risk.
@@ -92,7 +92,8 @@ Rollback strategy:
 - What is the target shard size for optimal downstream training throughput in this environment?
 - Should we include optional caption text fields beyond generation parameters in metadata for future multimodal use?
 ## Answer for the open questions
-- Check the codebase, Have created a random prompt generator for diffusion model use.
+
+- Check the codebase, I have created a prompt jsonl file for diffusion model use. file path: ./output/full/prompts.jsonl
 - Default inference parameters: steps=20, guidance_scale=7.5, Sampler=EulerAncestralDiscreteScheduler, Seed: Set unique seed for each sample, Resolution=512x512
 - Shard size: 1000 samples per shard.
 - No
