@@ -15,10 +15,6 @@ from .progress import ProgressState
 
 logger = logging.getLogger(__name__)
 
-# Checkpoint filename
-_CKPT_FILENAME = "wd-1-4-anime_e1.ckpt"
-_CKPT_URL = f"https://huggingface.co/hakurei/waifu-diffusion-v1-4/blob/main/{_CKPT_FILENAME}"
-
 
 def _select_device() -> tuple[torch.device, torch.dtype]:
     """Pick the best available device and matching dtype."""
@@ -32,10 +28,10 @@ def _select_device() -> tuple[torch.device, torch.dtype]:
 def load_pipeline(config: RunConfig) -> StableDiffusionPipeline:
     """Load the Waifu Diffusion v1.4 checkpoint."""
     device, dtype = _select_device()
-    logger.info("Loading model %s on %s (dtype=%s)", config.model_id, device, dtype)
+    logger.info("Loading checkpoint %s on %s (dtype=%s)", config.checkpoint_path, device, dtype)
 
     pipe = StableDiffusionPipeline.from_single_file(
-        _CKPT_URL,
+        str(config.checkpoint_path),
         torch_dtype=dtype,
     )
 

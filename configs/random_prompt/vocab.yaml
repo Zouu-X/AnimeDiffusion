@@ -1,16 +1,16 @@
-# Vocabulary definitions for anime face prompt generation.
+# Vocabulary definitions for Illustrious XL v2 anime-face prompt generation.
 # Each component has a list of options with weights.
 
 subject:
   options:
-    - value: "1girl, teenage girl"
+    - value: "1girl"
+      weight: 0.5
+    - value: "1boy"
       weight: 0.3
-    - value: "1boy, teenage boy"
-      weight: 0.2
-    - value: "1girl, young woman"
-      weight: 0.3
-    - value: "1boy, young man"
-      weight: 0.2
+    - value: "1girl, solo"
+      weight: 0.15
+    - value: "1boy, solo"
+      weight: 0.05
 
 face_shape:
   options:
@@ -27,9 +27,9 @@ face_shape:
     - value: "angular face"
       weight: 0.6
     - value: "delicate face"
-      weight: 0.7
+      weight: 0.8
     - value: "slim face"
-      weight: 0.6
+      weight: 0.7
     - value: "wide face"
       weight: 0.4
     - value: "diamond face"
@@ -256,10 +256,6 @@ compatibility_exclusions:
     value_a: "closed mouth"
     component_b: "expression"
     value_b: "surprised"
-  - component_a: "eyes"
-    value_a: "closed eyes"
-    component_b: "expression"
-    value_b: "surprised"
 
 style_modifiers:
   options:
@@ -267,36 +263,44 @@ style_modifiers:
       weight: 1.0
     - value: "best quality"
       weight: 1.0
-    - value: "ultra-detailed"
+    - value: "amazing quality"
+      weight: 0.9
+    - value: "very aesthetic"
       weight: 0.8
-    - value: "illustration"
+    - value: "absurdres"
+      weight: 0.8
+    - value: "newest"
+      weight: 0.5
+    - value: "source_anime"
       weight: 0.7
-    - value: "anime coloring"
+    - value: "score_9"
+      weight: 0.7
+    - value: "score_8_up"
+      weight: 0.8
+    - value: "score_7_up"
       weight: 0.6
     - value: "detailed face"
       weight: 0.8
-    - value: "beautiful detailed eyes"
+    - value: "detailed eyes"
+      weight: 0.8
+    - value: "portrait"
+      weight: 0.7
+    - value: "close-up"
       weight: 0.7
     - value: "solo"
-      weight: 0.8
+      weight: 0.9
     - value: "upper body"
       weight: 0.6
-    - value: "portrait"
-      weight: 0.5
-    - value: "close-up"
-      weight: 0.4
-    - value: "face focus"
-      weight: 0.5
-    - value: "absurdres"
-      weight: 0.4
-    - value: "highres"
+    - value: "anime screencap"
+      weight: 0.6
+    - value: "sharp focus"
       weight: 0.6
 
 lighting:
   options:
-    - value: "natural lighting"
-      weight: 1.0
     - value: "soft lighting"
+      weight: 1.0
+    - value: "natural lighting"
       weight: 0.9
     - value: "dramatic lighting"
       weight: 0.6

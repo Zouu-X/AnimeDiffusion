@@ -2,3 +2,6 @@
 /.codex
 /.pytest_cache
 /output
+/checkpoints
+/src/image_gen/__pycache
+/src/random_prompt/__pycache

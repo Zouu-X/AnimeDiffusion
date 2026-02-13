@@ -27,12 +27,14 @@ class RunConfig:
     guidance_scale: float = 7.5
     scheduler: str = "EulerAncestralDiscreteScheduler"
     resolution: int = 512
+    checkpoint_path: Path = field(default_factory=lambda: Path("checkpoints/wd-1-4-anime_e2.ckpt"))
 
     def __post_init__(self) -> None:
         self.prompts_path = Path(self.prompts_path)
         self.workspace_dir = Path(self.workspace_dir)
         self.shards_dir = Path(self.shards_dir)
         self.report_dir = Path(self.report_dir)
+        self.checkpoint_path = Path(self.checkpoint_path)
 
 
 def load_config(path: Path | str | None = None) -> RunConfig:

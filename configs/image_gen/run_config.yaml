@@ -10,3 +10,4 @@ num_inference_steps: 20
 guidance_scale: 7.5
 scheduler: "EulerAncestralDiscreteScheduler"
 resolution: 512
+checkpoint_path: "checkpoints/wd-1-4-anime_e2.ckpt"

@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 def _apply_pilot(config: RunConfig) -> RunConfig:
     """Override config for a pilot (dry) run of 1000 samples."""
-    config.target_count = 1000
-    config.shard_size = 1000
+    config.target_count = 10
+    config.shard_size = 10
     config.workspace_dir = config.workspace_dir.parent.parent / "images_pilot" / "workspace"
     config.shards_dir = config.workspace_dir.parent / "shards"
     config.report_dir = config.workspace_dir.parent
