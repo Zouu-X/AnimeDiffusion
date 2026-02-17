@@ -1,14 +1,12 @@
 # AnimeDiffusion
 
-A scalable pipeline for generating structured anime-face prompts and synthesizing images with **Waifu Diffusion v1.4**. The project consists of two stages:
-
 1. **Prompt Generation** (`src/random_prompt/`) — produces deterministic, quality-validated prompt datasets in JSONL format
-2. **Image Generation** (`src/image_gen/`) — runs batched diffusion inference and packages results into WebDataset shards
+2. **Image Generation** (`src/image_gen/`) — runs Illustrious XL v2 (SDXL) inference and packages results into WebDataset shards
 
 ## Quick Start
 
 ```bash
-# Install (includes diffusers, torch, Pillow, transformers, etc.)
+# Install dependencies
 pip install -e .
 
 # --- Prompt Generation ---
@@ -19,7 +17,11 @@ python -m src.random_prompt --seed 42 --pilot --output-dir output/pilot
 python -m src.random_prompt --seed 42 --output-dir output/full
 
 # --- Image Generation ---
-# Pilot run (1K images)
+# Place checkpoint locally (either filename works)
+# checkpoints/Illustrious-XL-v2.0.safetensors
+# checkpoints/illustrious-xl-v2.safetensors
+
+# Pilot run (10 images)
 python -m src.image_gen --pilot run
 
 # Full run (100K images)
@@ -85,76 +87,70 @@ Base negative prompt template and conditional additions for face focus, eye deta
 
 ## Image Generation (`src/image_gen/`)
 
-### Staged Pipeline
+### Model and Defaults
 
-The image generation pipeline runs four stages in sequence:
+Image generation uses `StableDiffusionXLPipeline.from_single_file()` with Illustrious XL v2 defaults.
 
-1. **Plan** — loads `prompts.jsonl`, validates records, and builds a sample manifest (`sample_manifest.json`)
-2. **Generate** — loads the diffusion model and runs batched inference with checkpointing; saves PNGs to the workspace directory
-3. **Package** — packs workspace PNGs into WebDataset `.tar` shards
-4. **Validate** — runs five completion gates on the packaged shards and writes a validation report
+Default config lives at `configs/image_gen/run_config.yaml`:
 
-The `run` subcommand executes all four stages end-to-end and writes a final run report.
+| Field | Default |
+|------|---------|
+| `model_id` | `illustrious-xl-v2` |
+| `checkpoint_path` | `checkpoints/illustrious-xl-v2.safetensors` |
+| `resolution` | `1024` |
+| `batch_size` | `4` |
+| `num_inference_steps` | `28` |
+| `guidance_scale` | `7.0` |
+| `scheduler` | `EulerAncestralDiscreteScheduler` |
+| `shard_size` | `1000` |
 
-### CLI Options
+### Pipeline Stages
 
+`python -m src.image_gen run` executes:
+1. `plan` - validates prompts and builds sample manifest
+2. `generate` - SDXL inference into workspace (`.png` + `.json` metadata per sample)
+3. `package` - WebDataset shard writing via `webdataset.TarWriter`
+4. `validate` - dataset gates (count, image integrity/resolution, metadata, ID coverage)
+5. `report` - writes run summary artifacts
+
+### Pilot Mode
+
+`--pilot` rewrites runtime paths to `output/images_pilot/` and sets:
+- `target_count = 10`
+- `shard_size = 10`
+
+### Manual Verification (Pilot)
+
+```bash
+# Run pilot
+python -m src.image_gen --pilot run
+
+# Expect 10 images and 1 shard
+ls output/images_pilot/workspace/*.png | wc -l
+ls output/images_pilot/shards/anime-face-*.tar | wc -l
+
+# Check validation report
+cat output/images_pilot/validation_report.json
+
+# Check WebDataset readability
+python - <<'PY'
+import webdataset as wds
+
+dataset = wds.WebDataset("output/images_pilot/shards/anime-face-000000.tar")
+count = 0
+for sample in dataset:
+    count += 1
+print("samples:", count)
+PY
 ```
-python -m src.image_gen [--config PATH] [--pilot] {plan,generate,package,validate,run}
-```
 
-| Flag / Subcommand | Description |
-|-------------------|-------------|
-| `--config` | Path to `run_config.yaml` (default: built-in defaults) |
-| `--pilot` | Pilot mode: 1000 samples into `output/images_pilot/` |
-| `plan` | Build sample manifest from prompts |
-| `generate` | Run batched image generation |
-| `package` | Package workspace into WebDataset shards |
-| `validate` | Run validation gates on packaged shards |
-| `run` | Execute all stages in sequence |
+### Notes
 
-### Output Artifacts
-
-- `output/images/workspace/` — individual PNG files from inference
-- `output/images/shards/` — WebDataset `.tar` shards
-- `output/images/run_manifest.json` — resolved config, library versions, timestamp
-- `output/images/progress.json` — resumable checkpoint state
-- `output/images/validation_report.json` — gate results (pass/fail with details)
-- `output/images/run_report.json` — final summary (timing, validation outcome)
-
-### Architecture
-
-```
-src/image_gen/
-├── __main__.py     # CLI entrypoint and stage orchestration
-├── config.py       # RunConfig dataclass, YAML loading, and run manifest
-├── planner.py      # Plan stage: load prompts, validate, build sample manifest
-├── inference.py    # Generate stage: load model, batched generation with checkpointing
-├── packager.py     # Package stage: write WebDataset .tar shards from workspace files
-├── validator.py    # Validate stage: five completion gates for dataset integrity
-├── report.py       # Run summary report generation
-└── progress.py     # Progress state persistence for resumable runs
-```
-
-### Configuration
-
-#### `configs/image_gen/run_config.yaml`
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `model_id` | `hakurei/waifu-diffusion-v1-4` | HuggingFace model identifier |
-| `prompts_path` | `output/full/prompts.jsonl` | Input prompts file |
-| `workspace_dir` | `output/images/workspace` | Directory for generated PNGs |
-| `shards_dir` | `output/images/shards` | Directory for WebDataset shards |
-| `report_dir` | `output/images` | Directory for reports and manifests |
-| `batch_size` | `8` | Images per inference batch |
-| `shard_size` | `1000` | Images per `.tar` shard |
-| `target_count` | `100000` | Total images to generate |
-| `num_inference_steps` | `20` | Diffusion denoising steps |
-| `guidance_scale` | `7.5` | Classifier-free guidance scale |
-| `scheduler` | `EulerAncestralDiscreteScheduler` | Diffusion scheduler |
-| `resolution` | `512` | Output image resolution (px) |
+- On lower-memory GPUs (or MPS), SDXL at `1024x1024` may require reducing `batch_size` in a custom config file.
+- Metadata exported per sample includes: `prompt`, `negative_prompt`, `seed`, `model_id`, `resolution`, `num_inference_steps`, `guidance_scale`, `scheduler`.
 
 ---
+
 
 ## Testing
 

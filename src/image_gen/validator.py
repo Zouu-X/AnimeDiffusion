@@ -16,7 +16,8 @@ from .config import RunConfig
 logger = logging.getLogger(__name__)
 
 REQUIRED_METADATA_FIELDS = {
-    "prompt", "seed", "model_id", "num_inference_steps", "guidance_scale", "scheduler",
+    "prompt", "negative_prompt", "seed", "model_id", "resolution",
+    "num_inference_steps", "guidance_scale", "scheduler",
 }
 
 

@@ -15,19 +15,19 @@ import yaml
 class RunConfig:
     """Configuration for an image generation run."""
 
-    model_id: str = "hakurei/waifu-diffusion-v1-4"
+    model_id: str = "illustrious-xl-v2"
     prompts_path: Path = field(default_factory=lambda: Path("output/full/prompts.jsonl"))
     workspace_dir: Path = field(default_factory=lambda: Path("output/images/workspace"))
     shards_dir: Path = field(default_factory=lambda: Path("output/images/shards"))
     report_dir: Path = field(default_factory=lambda: Path("output/images"))
-    batch_size: int = 8
+    batch_size: int = 4
     shard_size: int = 1000
     target_count: int = 100_000
-    num_inference_steps: int = 20
-    guidance_scale: float = 7.5
+    num_inference_steps: int = 28
+    guidance_scale: float = 7.0
     scheduler: str = "EulerAncestralDiscreteScheduler"
-    resolution: int = 512
-    checkpoint_path: Path = field(default_factory=lambda: Path("checkpoints/wd-1-4-anime_e2.ckpt"))
+    resolution: int = 1024
+    checkpoint_path: Path = field(default_factory=lambda: Path("checkpoints/illustrious-xl-v2.safetensors"))
 
     def __post_init__(self) -> None:
         self.prompts_path = Path(self.prompts_path)

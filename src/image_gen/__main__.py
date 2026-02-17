@@ -6,6 +6,8 @@ import argparse
 import logging
 import time
 
+import torch
+
 from .config import RunConfig, load_config, write_run_manifest
 from .progress import ProgressState
 
@@ -13,9 +15,9 @@ logger = logging.getLogger(__name__)
 
 
 def _apply_pilot(config: RunConfig) -> RunConfig:
-    """Override config for a pilot (dry) run of 1000 samples."""
-    config.target_count = 10
-    config.shard_size = 10
+    """Override config for a pilot (dry) run of 10 samples."""
+    config.target_count = 1
+    config.shard_size = 1
     config.workspace_dir = config.workspace_dir.parent.parent / "images_pilot" / "workspace"
     config.shards_dir = config.workspace_dir.parent / "shards"
     config.report_dir = config.workspace_dir.parent
@@ -89,6 +91,8 @@ def cmd_run(config: RunConfig) -> None:
 
     # Free GPU memory
     del pipeline
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
     # Package
     package(config, progress)
@@ -119,7 +123,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--pilot",
         action="store_true",
-        help="Pilot mode: generate 1000 samples into output/images_pilot/",
+        help="Pilot mode: generate 10 samples into output/images_pilot/",
     )
 
     subparsers = parser.add_subparsers(dest="command", required=True)

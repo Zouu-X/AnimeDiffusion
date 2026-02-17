@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import os
-import tarfile
 import tempfile
 from pathlib import Path
+
+import webdataset as wds
 
 from .config import RunConfig
 from .progress import ProgressState
@@ -49,10 +49,26 @@ def package(config: RunConfig, progress: ProgressState) -> None:
 
         shard_name = f"anime-face-{shard_id:06d}.tar"
         final_path = config.shards_dir / shard_name
-        tmp_path = final_path.with_suffix(".tar.tmp")
+        if final_path.exists():
+            logger.info("Shard %d already exists on disk, marking complete", shard_id)
+            progress.mark_shard_done(shard_id)
+            progress.save()
+            continue
 
-        _write_shard(tmp_path, sample_ids, config.workspace_dir)
-        os.rename(tmp_path, final_path)
+        fd, tmp_name = tempfile.mkstemp(
+            dir=config.shards_dir,
+            prefix=f"{shard_name}.",
+            suffix=".tmp",
+        )
+        os.close(fd)
+        tmp_path = Path(tmp_name)
+        try:
+            _write_shard(tmp_path, sample_ids, config.workspace_dir)
+            os.replace(tmp_path, final_path)
+        finally:
+            if tmp_path.exists():
+                tmp_path.unlink()
+
         progress.mark_shard_done(shard_id)
         progress.save()
         logger.info("Shard %d: packaged %d samples -> %s", shard_id, len(sample_ids), shard_name)
@@ -62,9 +78,19 @@ def package(config: RunConfig, progress: ProgressState) -> None:
 
 def _write_shard(tar_path: Path, sample_ids: list[str], workspace: Path) -> None:
     """Write a single tar shard containing PNGs and JSON sidecars."""
-    with tarfile.open(tar_path, "w") as tar:
+    with wds.TarWriter(str(tar_path)) as writer:
         for sid in sample_ids:
             png_path = workspace / f"{sid}.png"
             json_path = workspace / f"{sid}.json"
-            tar.add(png_path, arcname=f"{sid}.png")
-            tar.add(json_path, arcname=f"{sid}.json")
+            with open(png_path, "rb") as png_file:
+                png_bytes = png_file.read()
+            with open(json_path, "rb") as json_file:
+                json_bytes = json_file.read()
+
+            writer.write(
+                {
+                    "__key__": sid,
+                    "png": png_bytes,
+                    "json": json_bytes,
+                }
+            )

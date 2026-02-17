@@ -4,11 +4,9 @@ from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
 
 import torch
-from diffusers import EulerAncestralDiscreteScheduler, StableDiffusionPipeline
-from PIL import Image
+from diffusers import EulerAncestralDiscreteScheduler, StableDiffusionXLPipeline
 
 from .config import RunConfig
 from .progress import ProgressState
@@ -21,16 +19,16 @@ def _select_device() -> tuple[torch.device, torch.dtype]:
     if torch.cuda.is_available():
         return torch.device("cuda"), torch.float16
     if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-        return torch.device("mps"), torch.float32
+        return torch.device("mps"), torch.float16
     return torch.device("cpu"), torch.float32
 
 
-def load_pipeline(config: RunConfig) -> StableDiffusionPipeline:
-    """Load the Waifu Diffusion v1.4 checkpoint."""
+def load_pipeline(config: RunConfig) -> StableDiffusionXLPipeline:
+    """Load the Illustrious XL checkpoint."""
     device, dtype = _select_device()
     logger.info("Loading checkpoint %s on %s (dtype=%s)", config.checkpoint_path, device, dtype)
 
-    pipe = StableDiffusionPipeline.from_single_file(
+    pipe = StableDiffusionXLPipeline.from_single_file(
         str(config.checkpoint_path),
         torch_dtype=dtype,
     )
@@ -42,6 +40,13 @@ def load_pipeline(config: RunConfig) -> StableDiffusionPipeline:
         )
 
     pipe = pipe.to(device)
+    if device.type == "cuda":
+        try:
+            pipe.enable_xformers_memory_efficient_attention()
+            logger.info("Enabled xformers memory efficient attention")
+        except Exception as exc:
+            logger.warning("xformers not available, continuing without it: %s", exc)
+
     pipe.set_progress_bar_config(disable=True)
     logger.info("Model loaded successfully")
     return pipe
@@ -61,12 +66,10 @@ def _load_prompts(config: RunConfig) -> list[dict]:
     return records
 
 
-def generate(config: RunConfig, pipeline: StableDiffusionPipeline, progress: ProgressState) -> None:
+def generate(config: RunConfig, pipeline: StableDiffusionXLPipeline, progress: ProgressState) -> None:
     """Generate images in batches, saving PNGs + JSON sidecars to workspace."""
     config.workspace_dir.mkdir(parents=True, exist_ok=True)
     records = _load_prompts(config)
-    device = pipeline.device
-
     # Filter out already-finalized samples
     pending = [r for r in records if not progress.is_sample_done(r["id"])]
     total = len(records)
