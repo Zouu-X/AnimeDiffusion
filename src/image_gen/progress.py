@@ -38,9 +38,9 @@ class ProgressState:
         }
         fd, tmp = tempfile.mkstemp(dir=self.path.parent, suffix=".tmp")
         try:
-            with os.fdopen(fd, "w") as f:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
                 json.dump(data, f)
-            os.rename(tmp, self.path)
+            os.replace(tmp, self.path)
         except BaseException:
             if os.path.exists(tmp):
                 os.unlink(tmp)
@@ -51,7 +51,7 @@ class ProgressState:
         """Load existing progress or return empty state."""
         path = Path(path)
         if path.exists():
-            with open(path) as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             return cls(
                 path=path,

@@ -17,7 +17,7 @@ def load_vocab(config_dir: Path | None = None) -> dict:
     """Load and validate the vocabulary config."""
     config_dir = config_dir or _DEFAULT_CONFIG_DIR
     vocab_path = config_dir / "vocab.yaml"
-    with open(vocab_path) as f:
+    with open(vocab_path, encoding="utf-8") as f:
         vocab = yaml.safe_load(f)
 
     required_components = [
@@ -39,5 +39,5 @@ def load_negative_prompts(config_dir: Path | None = None) -> dict:
     """Load negative prompt templates."""
     config_dir = config_dir or _DEFAULT_CONFIG_DIR
     neg_path = config_dir / "negative_prompts.yaml"
-    with open(neg_path) as f:
+    with open(neg_path, encoding="utf-8") as f:
         return yaml.safe_load(f)

@@ -36,13 +36,13 @@ class Exporter:
 
     def write_record(self, record: PromptRecord) -> None:
         """Append a single record as a JSONL line."""
-        with open(self._jsonl_path, "a") as f:
+        with open(self._jsonl_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(asdict(record)) + "\n")
         self._records_written += 1
 
     def write_records(self, records: list[PromptRecord]) -> None:
         """Append a batch of records."""
-        with open(self._jsonl_path, "a") as f:
+        with open(self._jsonl_path, "a", encoding="utf-8") as f:
             for record in records:
                 f.write(json.dumps(asdict(record)) + "\n")
                 self._records_written += 1
@@ -90,7 +90,7 @@ class Exporter:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
-        with open(self._manifest_path, "w") as f:
+        with open(self._manifest_path, "w", encoding="utf-8") as f:
             json.dump(manifest, f, indent=2)
 
         return self._manifest_path

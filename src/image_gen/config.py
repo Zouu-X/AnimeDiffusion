@@ -42,7 +42,7 @@ def load_config(path: Path | str | None = None) -> RunConfig:
     if path is None:
         return RunConfig()
     path = Path(path)
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
     return RunConfig(**{k: v for k, v in data.items() if k in RunConfig.__dataclass_fields__})
 
@@ -73,6 +73,6 @@ def write_run_manifest(config: RunConfig) -> Path:
 
     out_path = config.report_dir / "run_manifest.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_path, "w") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
     return out_path

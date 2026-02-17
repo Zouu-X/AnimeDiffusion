@@ -27,7 +27,7 @@ def plan(config: RunConfig) -> dict:
 def _load_prompts(path: Path, target_count: int) -> list[dict]:
     """Load all prompt records from JSONL."""
     records: list[dict] = []
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -102,6 +102,6 @@ def _write_manifest(manifest: dict, config: RunConfig) -> None:
     """Write sample_manifest.json."""
     out_path = config.report_dir / "sample_manifest.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(out_path, "w") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         json.dump(manifest, f, indent=2)
     logger.info("Sample manifest written to %s", out_path)
