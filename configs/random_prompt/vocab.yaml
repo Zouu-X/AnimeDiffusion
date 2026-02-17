@@ -286,7 +286,7 @@ style_modifiers:
     - value: "portrait"
       weight: 0.7
     - value: "close-up"
-      weight: 0.7
+      weight: 0.4
     - value: "solo"
       weight: 0.9
     - value: "upper body"

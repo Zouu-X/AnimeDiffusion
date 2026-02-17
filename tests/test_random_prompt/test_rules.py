@@ -4,11 +4,12 @@ import json
 import tempfile
 from pathlib import Path
 
-from src.random_prompt.assembler import assemble_positive
+from src.random_prompt.assembler import assemble_negative, assemble_positive
 from src.random_prompt.generator import run
 from src.random_prompt.lint import YAW_RANGE, PITCH_RANGE
 from src.random_prompt.sampler import ComponentSampler
-from src.random_prompt.config import load_vocab
+from src.random_prompt.config import load_negative_prompts, load_vocab
+from src.random_prompt.schema import PromptComponents
 import random
 
 
@@ -103,3 +104,54 @@ def test_no_banned_tokens_in_positive():
                     assert banned not in tokens, (
                         f"Banned token '{banned}' found in: {record['positive_prompt']}"
                     )
+
+
+def test_negative_prompt_conditionals_are_applied_selectively():
+    """Conditional negatives should only be added when their trigger tags are present."""
+    negative_config = load_negative_prompts()
+    components = PromptComponents(
+        subject="1girl",
+        face_shape="round face",
+        eyes="blue eyes",
+        nose="small nose",
+        mouth="small mouth",
+        hair_color="black hair",
+        hair_style="long hair",
+        expression="smile",
+        yaw=0.0,
+        pitch=0.0,
+        style_modifiers=["masterpiece"],
+        lighting="soft lighting",
+        background="simple background",
+    )
+    negative = assemble_negative(components, negative_config)
+    tokens = {t.strip() for t in negative.split(",")}
+
+    assert "extra limbs" not in tokens
+    assert "bad eyes" not in tokens
+    assert "bad hands" in tokens
+
+
+def test_negative_prompt_adds_closeup_and_detailed_eye_conditionals():
+    """Face-focus and eye-specific negatives should appear when trigger tags are present."""
+    negative_config = load_negative_prompts()
+    components = PromptComponents(
+        subject="1girl",
+        face_shape="round face",
+        eyes="blue eyes",
+        nose="small nose",
+        mouth="small mouth",
+        hair_color="black hair",
+        hair_style="long hair",
+        expression="smile",
+        yaw=0.0,
+        pitch=0.0,
+        style_modifiers=["close-up", "detailed eyes", "masterpiece"],
+        lighting="soft lighting",
+        background="simple background",
+    )
+    negative = assemble_negative(components, negative_config)
+    tokens = {t.strip() for t in negative.split(",")}
+
+    assert "extra limbs" in tokens
+    assert "bad eyes" in tokens

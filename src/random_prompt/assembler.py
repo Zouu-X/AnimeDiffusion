@@ -88,12 +88,17 @@ def assemble_negative(components: PromptComponents, negative_config: dict) -> st
 
     conditional = negative_config.get("conditional_negatives", {})
 
-    # Always add face focus negatives for face generation
-    if "face_focus" in conditional:
+    style_tags = {t.strip().lower() for t in components.style_modifiers}
+
+    # Add face-focus suppressions only for tight portrait framing.
+    if "face_focus" in conditional and {"close-up", "portrait"} & style_tags:
         parts.extend(conditional["face_focus"])
 
-    # Add eye artifact suppression if detailed eyes are involved
-    if "detailed_eyes" in conditional:
+    # Add eye artifact suppression only when eyes are explicitly emphasized.
+    detailed_eye_traits = {"heterochromia", "glowing eyes", "sparkling eyes", "empty eyes"}
+    if "detailed_eyes" in conditional and (
+        "detailed eyes" in style_tags or components.eyes.strip().lower() in detailed_eye_traits
+    ):
         parts.extend(conditional["detailed_eyes"])
 
     # Add general quality suppression
