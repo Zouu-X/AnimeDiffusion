@@ -14,7 +14,7 @@ DEFAULT_THRESHOLDS = {
     "hair_color": 10,
     "hair_style": 10,
     "expression": 8,
-    "pose": 8,
+    "pose": 3,
 }
 
 

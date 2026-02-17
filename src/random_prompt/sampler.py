@@ -67,8 +67,8 @@ class ComponentSampler:
 
     def sample(self, rng: random.Random) -> PromptComponents:
         """Sample a full set of components. Returns None-compatible check separately."""
-        yaw = _truncated_normal(rng, sigma=5.0, lo=-15.0, hi=15.0)
-        pitch = _truncated_normal(rng, sigma=5.0, lo=-15.0, hi=15.0)
+        yaw = _truncated_normal(rng, sigma=1.5, lo=-15.0, hi=15.0)
+        pitch = _truncated_normal(rng, sigma=1.5, lo=-15.0, hi=15.0)
 
         n_styles = rng.randint(*self._style_count_range)
         style_pool = set()

@@ -189,8 +189,6 @@ hair_style:
       weight: 0.4
     - value: "ahoge"
       weight: 0.5
-    - value: "hair over one eye"
-      weight: 0.4
     - value: "very long hair"
       weight: 0.5
     - value: "twin braids"
