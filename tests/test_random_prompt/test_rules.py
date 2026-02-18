@@ -1,4 +1,4 @@
-"""Test: verify subject diversity, pose direction, hair fields, and output field completeness."""
+"""Test: verify prompt composition, diversity signals, and output field completeness."""
 
 import json
 import tempfile
@@ -6,7 +6,6 @@ from pathlib import Path
 
 from src.random_prompt.assembler import assemble_negative, assemble_positive
 from src.random_prompt.generator import run
-from src.random_prompt.lint import YAW_RANGE, PITCH_RANGE
 from src.random_prompt.sampler import ComponentSampler
 from src.random_prompt.config import load_negative_prompts, load_vocab
 from src.random_prompt.schema import PromptComponents
@@ -27,35 +26,47 @@ def test_subject_diversity():
     assert "1boy" in subject_str, "Expected at least one '1boy' subject"
 
 
-def test_pose_within_bounds():
-    """yaw and pitch must be within [-15, 15]."""
+def test_constant_frontal_pose_tags():
+    """Assembled prompts must always include constant frontal pose tags."""
     vocab = load_vocab()
     sampler = ComponentSampler(vocab)
     rng = random.Random(456)
-    for _ in range(500):
-        components = sampler.sample(rng)
-        assert YAW_RANGE[0] <= components.yaw <= YAW_RANGE[1], (
-            f"yaw out of range: {components.yaw}"
-        )
-        assert PITCH_RANGE[0] <= components.pitch <= PITCH_RANGE[1], (
-            f"pitch out of range: {components.pitch}"
-        )
-
-
-def test_single_pose_direction():
-    """Assembled prompts must contain at most one 'looking' direction token."""
-    vocab = load_vocab()
-    sampler = ComponentSampler(vocab)
-    rng = random.Random(789)
-    looking_tokens = {"looking to the side", "looking away", "looking up", "looking down"}
+    directional_tokens = {
+        "facing viewer",
+        "looking to the side",
+        "looking away",
+        "looking up",
+        "looking down",
+    }
     for _ in range(500):
         components = sampler.sample(rng)
         prompt = assemble_positive(components)
         tokens = [t.strip().lower() for t in prompt.split(",")]
-        found = [t for t in tokens if t in looking_tokens]
-        assert len(found) <= 1, (
-            f"Multiple looking directions in prompt: {found}"
-        )
+        assert "frontal face" in tokens
+        assert "looking at viewer" in tokens
+        assert not (directional_tokens & set(tokens))
+
+
+def test_accessory_position_when_present():
+    """Accessory token should appear after expression and before frontal pose tags."""
+    components = PromptComponents(
+        subject="1girl",
+        face_shape="round face",
+        eyes="blue eyes",
+        nose="small nose",
+        mouth="small mouth",
+        hair_color="black hair",
+        hair_style="long hair",
+        expression="smile",
+        accessories="earrings",
+        style_modifiers=["masterpiece"],
+        lighting="soft lighting",
+        background="simple background",
+    )
+    prompt = assemble_positive(components)
+    tokens = [t.strip().lower() for t in prompt.split(",")]
+    assert tokens.index("earrings") > tokens.index("smile")
+    assert tokens.index("earrings") < tokens.index("frontal face")
 
 
 def test_hair_has_color():
@@ -118,8 +129,7 @@ def test_negative_prompt_conditionals_are_applied_selectively():
         hair_color="black hair",
         hair_style="long hair",
         expression="smile",
-        yaw=0.0,
-        pitch=0.0,
+        accessories="",
         style_modifiers=["masterpiece"],
         lighting="soft lighting",
         background="simple background",
@@ -130,6 +140,8 @@ def test_negative_prompt_conditionals_are_applied_selectively():
     assert "extra limbs" not in tokens
     assert "bad eyes" not in tokens
     assert "bad hands" in tokens
+    assert "from side" in tokens
+    assert "extreme close-up" in tokens
 
 
 def test_negative_prompt_adds_closeup_and_detailed_eye_conditionals():
@@ -144,8 +156,7 @@ def test_negative_prompt_adds_closeup_and_detailed_eye_conditionals():
         hair_color="black hair",
         hair_style="long hair",
         expression="smile",
-        yaw=0.0,
-        pitch=0.0,
+        accessories="",
         style_modifiers=["close-up", "detailed eyes", "masterpiece"],
         lighting="soft lighting",
         background="simple background",
@@ -155,3 +166,5 @@ def test_negative_prompt_adds_closeup_and_detailed_eye_conditionals():
 
     assert "extra limbs" in tokens
     assert "bad eyes" in tokens
+    assert "from side" in tokens
+    assert "extreme close-up" in tokens

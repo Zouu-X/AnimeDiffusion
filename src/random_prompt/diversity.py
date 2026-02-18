@@ -14,7 +14,7 @@ DEFAULT_THRESHOLDS = {
     "hair_color": 10,
     "hair_style": 10,
     "expression": 8,
-    "pose": 3,
+    "accessories": 5,
 }
 
 
@@ -32,30 +32,12 @@ class DiversityTracker:
         self._record_value("hair_color", components.hair_color)
         self._record_value("hair_style", components.hair_style)
         self._record_value("expression", components.expression)
-
-        # Quantize pose into buckets for diversity counting
-        pose_bucket = self._pose_bucket(components.yaw, components.pitch)
-        self._record_value("pose", pose_bucket)
+        if components.accessories:
+            self._record_value("accessories", components.accessories)
 
     def _record_value(self, feature: str, value: str) -> None:
         self._seen[feature].add(value)
         self._counts[feature][value] += 1
-
-    @staticmethod
-    def _pose_bucket(yaw: float, pitch: float) -> str:
-        """Quantize yaw/pitch into discrete buckets."""
-        def _bucket(v: float) -> str:
-            if v < -8:
-                return "far_neg"
-            elif v < -3:
-                return "near_neg"
-            elif v <= 3:
-                return "center"
-            elif v <= 8:
-                return "near_pos"
-            else:
-                return "far_pos"
-        return f"yaw_{_bucket(yaw)}_pitch_{_bucket(pitch)}"
 
     def check_thresholds(self) -> dict[str, tuple[bool, int, int]]:
         """Check diversity thresholds.

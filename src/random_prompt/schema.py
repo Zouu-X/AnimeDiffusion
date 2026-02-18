@@ -15,8 +15,7 @@ class PromptComponents:
     hair_color: str
     hair_style: str
     expression: str
-    yaw: float  # [-15, 15]
-    pitch: float  # [-15, 15]
+    accessories: str = ""
     style_modifiers: list[str] = field(default_factory=list)
     lighting: str = ""
     background: str = ""

@@ -40,21 +40,14 @@ class CompatibilityChecker:
         return True
 
 
-def _truncated_normal(rng: random.Random, sigma: float = 5.0, lo: float = -15.0, hi: float = 15.0) -> float:
-    """Sample from a truncated normal distribution (mean=0)."""
-    while True:
-        v = rng.gauss(0.0, sigma)
-        if lo <= v <= hi:
-            return v
-
-
 class ComponentSampler:
     """Orchestrates sampling of all prompt components."""
 
     def __init__(self, vocab: dict) -> None:
         self._samplers: dict[str, WeightedSampler] = {}
         for key in ["subject", "face_shape", "eyes", "nose", "mouth",
-                     "hair_color", "hair_style", "expression", "lighting", "background"]:
+                     "hair_color", "hair_style", "expression", "accessories",
+                     "lighting", "background"]:
             self._samplers[key] = WeightedSampler(vocab[key]["options"])
 
         self._style_sampler = WeightedSampler(vocab["style_modifiers"]["options"])
@@ -67,9 +60,6 @@ class ComponentSampler:
 
     def sample(self, rng: random.Random) -> PromptComponents:
         """Sample a full set of components. Returns None-compatible check separately."""
-        yaw = _truncated_normal(rng, sigma=1.5, lo=-15.0, hi=15.0)
-        pitch = _truncated_normal(rng, sigma=1.5, lo=-15.0, hi=15.0)
-
         n_styles = rng.randint(*self._style_count_range)
         style_pool = set()
         while len(style_pool) < n_styles:
@@ -84,8 +74,7 @@ class ComponentSampler:
             hair_color=self._samplers["hair_color"].sample(rng),
             hair_style=self._samplers["hair_style"].sample(rng),
             expression=self._samplers["expression"].sample(rng),
-            yaw=yaw,
-            pitch=pitch,
+            accessories=self._samplers["accessories"].sample(rng),
             style_modifiers=sorted(style_pool),
             lighting=self._samplers["lighting"].sample(rng),
             background=self._samplers["background"].sample(rng),

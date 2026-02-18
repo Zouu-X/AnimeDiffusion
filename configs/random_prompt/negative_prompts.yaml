@@ -33,3 +33,19 @@ conditional_negatives:
     - "fewer digits"
     - "fused fingers"
     - "too many fingers"
+
+  # Always-on reinforcement to avoid side/profile/back views.
+  anti_side_view:
+    - "from side"
+    - "from behind"
+    - "looking away"
+    - "looking down"
+    - "looking up"
+    - "turned head"
+    - "3/4 view"
+
+  # Always-on suppression for excessive facial crop.
+  extreme_closeup:
+    - "extreme close-up"
+    - "cropped face"
+    - "macro"

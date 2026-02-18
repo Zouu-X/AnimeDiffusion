@@ -21,8 +21,7 @@ def _make_components(**overrides) -> PromptComponents:
         hair_color="blonde hair",
         hair_style="long hair",
         expression="smile",
-        yaw=0.0,
-        pitch=0.0,
+        accessories="",
         style_modifiers=["masterpiece"],
         lighting="natural lighting",
         background="simple background",
@@ -45,7 +44,9 @@ def test_diversity_tracker_counts():
 
 def test_below_threshold_blocks_finalization():
     """When diversity thresholds are not met, finalization must raise."""
-    tracker = DiversityTracker(thresholds={"eyes": 5, "hair_color": 5, "hair_style": 5, "expression": 3, "pose": 3})
+    tracker = DiversityTracker(
+        thresholds={"eyes": 5, "hair_color": 5, "hair_style": 5, "expression": 3, "accessories": 3}
+    )
     # Only record 2 unique eyes — below threshold of 5
     tracker.record(_make_components(eyes="blue eyes", hair_color="blonde hair", hair_style="long hair", expression="smile"))
     tracker.record(_make_components(eyes="red eyes", hair_color="black hair", hair_style="short hair", expression="serious"))
@@ -70,12 +71,14 @@ def test_below_threshold_blocks_finalization():
 
 def test_above_threshold_allows_finalization():
     """When diversity thresholds are met, finalization should succeed."""
-    tracker = DiversityTracker(thresholds={"eyes": 2, "hair_color": 2, "hair_style": 2, "expression": 2, "pose": 2})
+    tracker = DiversityTracker(
+        thresholds={"eyes": 2, "hair_color": 2, "hair_style": 2, "expression": 2, "accessories": 2}
+    )
     # Record enough unique values
     tracker.record(_make_components(eyes="blue eyes", hair_color="blonde hair", hair_style="long hair",
-                                    expression="smile", yaw=-10, pitch=-10))
+                                    expression="smile", accessories="earrings"))
     tracker.record(_make_components(eyes="red eyes", hair_color="black hair", hair_style="short hair",
-                                    expression="serious", yaw=10, pitch=10))
+                                    expression="serious", accessories="headband"))
 
     assert tracker.all_thresholds_met()
 

@@ -22,7 +22,8 @@ def load_vocab(config_dir: Path | None = None) -> dict:
 
     required_components = [
         "subject", "face_shape", "eyes", "nose", "mouth",
-        "hair_color", "hair_style", "expression", "style_modifiers", "lighting", "background",
+        "hair_color", "hair_style", "expression", "accessories",
+        "style_modifiers", "lighting", "background",
     ]
     for comp in required_components:
         if comp not in vocab:

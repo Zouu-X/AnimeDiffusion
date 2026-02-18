@@ -227,6 +227,31 @@ expression:
     - value: "sleepy"
       weight: 0.3
 
+accessories:
+  options:
+    - value: ""
+      weight: 1.0
+    - value: "earrings"
+      weight: 0.1
+    - value: "stud earrings"
+      weight: 0.1
+    - value: "headband"
+      weight: 0.1
+    - value: "hair ribbon"
+      weight: 0.1
+    - value: "hair bow"
+      weight: 0.1
+    - value: "hairpin"
+      weight: 0.1
+    - value: "choker"
+      weight: 0.1
+    - value: "necklace"
+      weight: 0.1
+    - value: "flower hair ornament"
+      weight: 0.1
+    - value: "star hair clip"
+      weight: 0.1
+
 # Compatibility rules: specify combos to avoid.
 # Each rule: {component_a, value_a, component_b, value_b}
 compatibility_exclusions:
@@ -284,7 +309,7 @@ style_modifiers:
     - value: "portrait"
       weight: 0.7
     - value: "close-up"
-      weight: 0.4
+      weight: 0.2
     - value: "solo"
       weight: 0.9
     - value: "upper body"

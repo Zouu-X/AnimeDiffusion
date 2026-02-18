@@ -4,29 +4,9 @@ from .schema import PromptComponents
 
 
 # Waifu Diffusion v1.4 tag ordering:
-# quality tags -> subject -> appearance -> expression -> pose -> lighting -> background
+# quality tags -> subject -> appearance -> expression -> accessories -> pose -> lighting -> background
 _QUALITY_TAGS_IN_POSITIVE = {"masterpiece", "best quality", "highres", "absurdres", "ultra-detailed"}
-
-
-def _pose_descriptor(yaw: float, pitch: float) -> str:
-    """Convert yaw/pitch to a single-direction textual pose descriptor.
-
-    Picks the dominant axis (larger absolute value) and emits one tag.
-    If both |yaw| and |pitch| <= 3, emits "facing viewer".
-    """
-    if abs(yaw) <= 3 and abs(pitch) <= 3:
-        return "facing viewer"
-    # Choose the dominant axis
-    if abs(yaw) >= abs(pitch):
-        if yaw > 0:
-            return "looking to the side"
-        else:
-            return "looking away"
-    else:
-        if pitch > 0:
-            return "looking up"
-        else:
-            return "looking down"
+_FRONTAL_POSE_TAGS = ("frontal face", "looking at viewer")
 
 
 def assemble_positive(components: PromptComponents) -> str:
@@ -59,15 +39,18 @@ def assemble_positive(components: PromptComponents) -> str:
     # 4) Expression
     tokens.append(components.expression)
 
-    # 5) Pose
-    pose = _pose_descriptor(components.yaw, components.pitch)
-    tokens.append(pose)
+    # 5) Optional accessories
+    if components.accessories:
+        tokens.append(components.accessories)
 
-    # 6) Lighting
+    # 6) Constant frontal pose tags
+    tokens.extend(_FRONTAL_POSE_TAGS)
+
+    # 7) Lighting
     if components.lighting:
         tokens.append(components.lighting)
 
-    # 7) Background
+    # 8) Background
     if components.background:
         tokens.append(components.background)
 
@@ -104,5 +87,13 @@ def assemble_negative(components: PromptComponents, negative_config: dict) -> st
     # Add general quality suppression
     if "quality" in conditional:
         parts.extend(conditional["quality"])
+
+    # Always reinforce frontal, non-profile composition.
+    if "anti_side_view" in conditional:
+        parts.extend(conditional["anti_side_view"])
+
+    # Always suppress extreme close framing.
+    if "extreme_closeup" in conditional:
+        parts.extend(conditional["extreme_closeup"])
 
     return ", ".join(parts)
