@@ -68,7 +68,15 @@ def _load_prompts(config: RunConfig) -> list[dict]:
 
 def _count_tokens(tokenizer: object, text: str) -> int:
     """Return token count for a text string using a tokenizer-compatible API."""
-    encoded = tokenizer(text, add_special_tokens=True, truncation=False)  # type: ignore[misc]
+    try:
+        encoded = tokenizer(  # type: ignore[misc]
+            text,
+            add_special_tokens=True,
+            truncation=False,
+            verbose=False,
+        )
+    except TypeError:
+        encoded = tokenizer(text, add_special_tokens=True, truncation=False)  # type: ignore[misc]
     ids = encoded["input_ids"]
     if ids and isinstance(ids[0], list):
         return len(ids[0])
@@ -130,14 +138,25 @@ def generate(config: RunConfig, pipeline: StableDiffusionXLPipeline, progress: P
 
         prepared_batch = []
         for rec in batch:
+            pos_before = [_count_tokens(tok, rec["positive_prompt"]) for tok in text_tokenizers]
+            neg_before = [_count_tokens(tok, rec["negative_prompt"]) for tok in text_tokenizers]
             pos_prompt, pos_trimmed = _trim_prompt_to_limit(rec["positive_prompt"], text_tokenizers)
             neg_prompt, neg_trimmed = _trim_prompt_to_limit(rec["negative_prompt"], text_tokenizers)
+            pos_after = [_count_tokens(tok, pos_prompt) for tok in text_tokenizers]
+            neg_after = [_count_tokens(tok, neg_prompt) for tok in text_tokenizers]
             if pos_trimmed or neg_trimmed:
                 logger.warning(
-                    "Trimmed prompts for %s to fit tokenizer max length (positive_trimmed=%s, negative_trimmed=%s)",
+                    (
+                        "Trimmed prompts for %s to fit tokenizer max length "
+                        "(positive_trimmed=%s %s->%s, negative_trimmed=%s %s->%s)"
+                    ),
                     rec["id"],
                     pos_trimmed,
+                    max(pos_before) if pos_before else 0,
+                    max(pos_after) if pos_after else 0,
                     neg_trimmed,
+                    max(neg_before) if neg_before else 0,
+                    max(neg_after) if neg_after else 0,
                 )
             prepared_batch.append((rec, pos_prompt, neg_prompt))
 

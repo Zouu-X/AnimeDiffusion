@@ -1,46 +1,29 @@
 # Negative prompt templates for Illustrious XL v2 anime face generation.
 
 base_negative: >-
-  worst quality, low quality, lowres, blurry, jpeg artifacts,
-  text, signature, watermark, artist name, bad anatomy, bad proportions,
-  deformed, disfigured, duplicate, mutation, comic panel, manga page, side view, profile
+  worst quality, lowres, blurry, jpeg artifacts,
+  text, signature, watermark, bad anatomy, deformed, disfigured, side view, profile
 
 # Additional negative tokens added dynamically based on components.
 conditional_negatives:
   # When generating close-up face, suppress non-face artifacts.
   face_focus:
     - "extra limbs"
-    - "missing arms"
-    - "missing legs"
-    - "malformed limbs"
-    - "long neck"
-    - "out of frame"
 
   # Eye-specific artifacts for detailed eye prompts.
   detailed_eyes:
     - "bad eyes"
-    - "extra eyes"
-    - "asymmetric eyes"
-    - "cross-eyed"
-    - "lazy eye"
 
   # General hand/finger suppressions still useful in portrait crops.
   quality:
     - "bad hands"
-    - "mutated hands"
-    - "poorly drawn hands"
     - "extra digit"
-    - "fewer digits"
     - "fused fingers"
-    - "too many fingers"
 
   # Always-on reinforcement to avoid side/profile/back views.
   anti_side_view:
     - "from side"
     - "from behind"
-    - "looking away"
-    - "looking down"
-    - "looking up"
     - "turned head"
     - "3/4 view"
 
@@ -48,4 +31,3 @@ conditional_negatives:
   extreme_closeup:
     - "extreme close-up"
     - "cropped face"
-    - "macro"
