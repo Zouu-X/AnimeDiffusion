@@ -1,9 +1,9 @@
 # Negative prompt templates for Illustrious XL v2 anime face generation.
 
 base_negative: >-
-  worst quality, low quality, normal quality, lowres, blurry, jpeg artifacts,
-  text, signature, watermark, username, artist name, bad anatomy, bad proportions,
-  deformed, disfigured, duplicate, mutation
+  worst quality, low quality, lowres, blurry, jpeg artifacts,
+  text, signature, watermark, artist name, bad anatomy, bad proportions,
+  deformed, disfigured, duplicate, mutation, comic panel, manga page, side view, profile
 
 # Additional negative tokens added dynamically based on components.
 conditional_negatives:

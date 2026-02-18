@@ -29,6 +29,6 @@
 ## 7. Verification
 
 - [x] 7.1 Run `pip install -e .` to verify dependency installation
-- [ ] 7.2 Run `python -m src.image_gen --pilot run` end-to-end (10 samples)
-- [ ] 7.3 Verify pilot output: 10 PNGs at 1024x1024, 1 WebDataset shard, all validation gates pass
-- [ ] 7.4 Verify WebDataset readability with `webdataset.WebDataset()` reader
+- [x] 7.2 Run `python -m src.image_gen --pilot run` end-to-end (10 samples)
+- [x] 7.3 Verify pilot output: 10 PNGs at 1024x1024, 1 WebDataset shard, all validation gates pass
+- [x] 7.4 Verify WebDataset readability with `webdataset.WebDataset()` reader

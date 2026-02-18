@@ -24,8 +24,8 @@ face_shape:
       weight: 0.7
     - value: "soft face"
       weight: 0.8
-    - value: "angular face"
-      weight: 0.6
+    - value: "masculine face"
+      weight: 0.4
     - value: "delicate face"
       weight: 0.8
     - value: "slim face"
@@ -94,7 +94,7 @@ nose:
       weight: 1.0
     - value: "button nose"
       weight: 0.8
-    - value: "pointed nose"
+    - value: "defined nose"
       weight: 0.6
     - value: "flat nose"
       weight: 0.5
@@ -201,7 +201,7 @@ expression:
     - value: "serious"
       weight: 0.8
     - value: "crying"
-      weight: 0.5
+      weight: 0.2
     - value: "laughing"
       weight: 0.6
     - value: "surprised"
@@ -215,7 +215,7 @@ expression:
     - value: "smirk"
       weight: 0.5
     - value: "expressionless"
-      weight: 0.4
+      weight: 0.6
     - value: "happy"
       weight: 0.8
     - value: "sad"
@@ -301,7 +301,7 @@ lighting:
     - value: "natural lighting"
       weight: 0.9
     - value: "dramatic lighting"
-      weight: 0.6
+      weight: 0.4
     - value: "studio lighting"
       weight: 0.5
     - value: "backlighting"
