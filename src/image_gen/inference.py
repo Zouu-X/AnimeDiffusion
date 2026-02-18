@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import json
 import logging
 
@@ -23,6 +24,90 @@ def _select_device() -> tuple[torch.device, torch.dtype]:
     return torch.device("cpu"), torch.float32
 
 
+def _is_oom_error(exc: BaseException) -> bool:
+    """Return True if an exception looks like a CUDA out-of-memory failure."""
+    if isinstance(exc, torch.cuda.OutOfMemoryError):
+        return True
+    message = str(exc).lower()
+    return "out of memory" in message and "cuda" in message
+
+
+def _recommended_max_batch_size(
+    resolution: int,
+    total_vram_gib: float,
+    xformers_enabled: bool,
+) -> int:
+    """Heuristic cap that avoids spilling SDXL generation into shared GPU memory."""
+    if resolution >= 1024:
+        if total_vram_gib < 11:
+            cap = 1
+        elif total_vram_gib < 14:
+            cap = 2
+        elif total_vram_gib < 20:
+            cap = 3
+        else:
+            cap = 4
+    elif resolution >= 768:
+        if total_vram_gib < 8:
+            cap = 1
+        elif total_vram_gib < 12:
+            cap = 2
+        elif total_vram_gib < 20:
+            cap = 4
+        else:
+            cap = 6
+    else:
+        if total_vram_gib < 6:
+            cap = 1
+        elif total_vram_gib < 8:
+            cap = 2
+        elif total_vram_gib < 12:
+            cap = 4
+        else:
+            cap = 8
+    if not xformers_enabled:
+        cap = max(1, cap - 1)
+    return cap
+
+
+def _resolve_runtime_batch_size(
+    config: RunConfig,
+    pipeline: StableDiffusionXLPipeline,
+) -> int:
+    """Resolve a safe effective batch size for this runtime/device."""
+    requested = max(1, config.batch_size)
+    if not torch.cuda.is_available():
+        return requested
+
+    try:
+        props = torch.cuda.get_device_properties(torch.cuda.current_device())
+        total_vram_gib = props.total_memory / (1024 ** 3)
+    except Exception:
+        return requested
+
+    xformers_enabled = bool(getattr(pipeline, "_xformers_enabled", False))
+    recommended = _recommended_max_batch_size(
+        resolution=config.resolution,
+        total_vram_gib=total_vram_gib,
+        xformers_enabled=xformers_enabled,
+    )
+    effective = min(requested, recommended)
+    if effective < requested:
+        logger.warning(
+            (
+                "Capping batch_size from %d to %d for %.1f GiB VRAM at %dx%d "
+                "(xformers=%s) to avoid shared-memory fallback."
+            ),
+            requested,
+            effective,
+            total_vram_gib,
+            config.resolution,
+            config.resolution,
+            xformers_enabled,
+        )
+    return max(1, effective)
+
+
 def load_pipeline(config: RunConfig) -> StableDiffusionXLPipeline:
     """Load the Illustrious XL checkpoint."""
     device, dtype = _select_device()
@@ -40,12 +125,30 @@ def load_pipeline(config: RunConfig) -> StableDiffusionXLPipeline:
         )
 
     pipe = pipe.to(device)
+    xformers_enabled = False
     if device.type == "cuda":
         try:
             pipe.enable_xformers_memory_efficient_attention()
+            xformers_enabled = True
             logger.info("Enabled xformers memory efficient attention")
         except Exception as exc:
             logger.warning("xformers not available, continuing without it: %s", exc)
+        try:
+            pipe.enable_attention_slicing("auto")
+            logger.info("Enabled attention slicing")
+        except Exception as exc:
+            logger.warning("Could not enable attention slicing: %s", exc)
+        try:
+            pipe.enable_vae_slicing()
+            logger.info("Enabled VAE slicing")
+        except Exception as exc:
+            logger.warning("Could not enable VAE slicing: %s", exc)
+        try:
+            pipe.enable_vae_tiling()
+            logger.info("Enabled VAE tiling")
+        except Exception as exc:
+            logger.warning("Could not enable VAE tiling: %s", exc)
+    setattr(pipe, "_xformers_enabled", xformers_enabled)
 
     pipe.set_progress_bar_config(disable=True)
     logger.info("Model loaded successfully")
@@ -125,16 +228,23 @@ def generate(config: RunConfig, pipeline: StableDiffusionXLPipeline, progress: P
     pending = [r for r in records if not progress.is_sample_done(r["id"])]
     total = len(records)
     done = total - len(pending)
+    runtime_batch_size = _resolve_runtime_batch_size(config, pipeline)
     logger.info("Resuming: %d/%d already done, %d remaining", done, total, len(pending))
 
-    batch_num = 0
-    for i in range(0, len(pending), config.batch_size):
-        batch = pending[i : i + config.batch_size]
-        batch_num += 1
-        text_tokenizers = [
-            tok for tok in [getattr(pipeline, "tokenizer", None), getattr(pipeline, "tokenizer_2", None)]
-            if tok is not None
+    text_tokenizers = [
+        tok
+        for tok in [
+            getattr(pipeline, "tokenizer", None),
+            getattr(pipeline, "tokenizer_2", None),
         ]
+        if tok is not None
+    ]
+
+    batch_num = 0
+    i = 0
+    while i < len(pending):
+        batch = pending[i : i + runtime_batch_size]
+        batch_num += 1
 
         prepared_batch = []
         for rec in batch:
@@ -160,49 +270,78 @@ def generate(config: RunConfig, pipeline: StableDiffusionXLPipeline, progress: P
                 )
             prepared_batch.append((rec, pos_prompt, neg_prompt))
 
-        # Build generators with per-sample seeds
-        generators = [
-            torch.Generator(device="cpu").manual_seed(rec["seed"])
-            for rec, _, _ in prepared_batch
-        ]
+        micro_batch_size = len(prepared_batch)
+        j = 0
+        while j < len(prepared_batch):
+            micro_batch = prepared_batch[j : j + micro_batch_size]
+            generators = [
+                torch.Generator(device="cpu").manual_seed(rec["seed"])
+                for rec, _, _ in micro_batch
+            ]
 
-        # Run inference
-        results = pipeline(
-            prompt=[pos_prompt for _, pos_prompt, _ in prepared_batch],
-            negative_prompt=[neg_prompt for _, _, neg_prompt in prepared_batch],
-            num_inference_steps=config.num_inference_steps,
-            guidance_scale=config.guidance_scale,
-            height=config.resolution,
-            width=config.resolution,
-            generator=generators,
+            try:
+                results = pipeline(
+                    prompt=[pos_prompt for _, pos_prompt, _ in micro_batch],
+                    negative_prompt=[neg_prompt for _, _, neg_prompt in micro_batch],
+                    num_inference_steps=config.num_inference_steps,
+                    guidance_scale=config.guidance_scale,
+                    height=config.resolution,
+                    width=config.resolution,
+                    generator=generators,
+                )
+            except RuntimeError as exc:
+                if not _is_oom_error(exc):
+                    raise
+                if micro_batch_size == 1:
+                    raise
+                reduced = max(1, micro_batch_size // 2)
+                logger.warning(
+                    "CUDA OOM at micro-batch %d; retrying with %d",
+                    micro_batch_size,
+                    reduced,
+                )
+                micro_batch_size = reduced
+                runtime_batch_size = min(runtime_batch_size, reduced)
+                gc.collect()
+                torch.cuda.empty_cache()
+                continue
+
+            for (rec, pos_prompt, neg_prompt), image in zip(micro_batch, results.images):
+                sample_id = rec["id"]
+                png_path = config.workspace_dir / f"{sample_id}.png"
+                json_path = config.workspace_dir / f"{sample_id}.json"
+
+                image.save(png_path)
+
+                metadata = {
+                    "prompt": pos_prompt,
+                    "negative_prompt": neg_prompt,
+                    "seed": rec["seed"],
+                    "model_id": config.model_id,
+                    "num_inference_steps": config.num_inference_steps,
+                    "guidance_scale": config.guidance_scale,
+                    "scheduler": config.scheduler,
+                    "resolution": config.resolution,
+                }
+                with open(json_path, "w") as f:
+                    json.dump(metadata, f)
+
+                progress.mark_sample_done(sample_id)
+
+            done += len(micro_batch)
+            progress.save()
+            j += len(micro_batch)
+            del results
+
+        i += len(batch)
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        logger.info(
+            "Batch %d: generated %d/%d samples (runtime_batch_size=%d)",
+            batch_num,
+            done,
+            total,
+            runtime_batch_size,
         )
-
-        # Save outputs
-        for (rec, pos_prompt, neg_prompt), image in zip(prepared_batch, results.images):
-            sample_id = rec["id"]
-            png_path = config.workspace_dir / f"{sample_id}.png"
-            json_path = config.workspace_dir / f"{sample_id}.json"
-
-            image.save(png_path)
-
-            metadata = {
-                "prompt": pos_prompt,
-                "negative_prompt": neg_prompt,
-                "seed": rec["seed"],
-                "model_id": config.model_id,
-                "num_inference_steps": config.num_inference_steps,
-                "guidance_scale": config.guidance_scale,
-                "scheduler": config.scheduler,
-                "resolution": config.resolution,
-            }
-            with open(json_path, "w") as f:
-                json.dump(metadata, f)
-
-            progress.mark_sample_done(sample_id)
-
-        # Checkpoint after each batch
-        progress.save()
-        done += len(batch)
-        logger.info("Batch %d: generated %d/%d samples", batch_num, done, total)
 
     logger.info("Generation complete: %d samples", total)

@@ -146,7 +146,7 @@ PY
 
 ### Notes
 
-- On lower-memory GPUs (or MPS), SDXL at `1024x1024` may require reducing `batch_size` in a custom config file.
+- On lower-memory GPUs (or MPS), SDXL at `1024x1024` may require reducing `batch_size`. The runtime now auto-caps effective batch size on CUDA based on VRAM and falls back to smaller micro-batches on OOM, so `batch_size` acts as an upper bound.
 - Metadata exported per sample includes: `prompt`, `negative_prompt`, `seed`, `model_id`, `resolution`, `num_inference_steps`, `guidance_scale`, `scheduler`.
 
 ---
