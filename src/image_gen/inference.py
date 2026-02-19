@@ -14,6 +14,12 @@ from .progress import ProgressState
 
 logger = logging.getLogger(__name__)
 
+# Optimization path is tuned for Databricks A10G runtime used in production.
+DATABRICKS_A10G_ASSUMPTIONS = {
+    "torch": "2.3.1+cu121",
+    "diffusers": "0.36.0",
+}
+
 
 def _select_device() -> tuple[torch.device, torch.dtype]:
     """Pick the best available device and matching dtype."""
@@ -35,7 +41,7 @@ def _is_oom_error(exc: BaseException) -> bool:
 def _recommended_max_batch_size(
     resolution: int,
     total_vram_gib: float,
-    xformers_enabled: bool,
+    sdpa_fused_only_active: bool,
 ) -> int:
     """Heuristic cap that avoids spilling SDXL generation into shared GPU memory."""
     if resolution >= 1024:
@@ -65,7 +71,7 @@ def _recommended_max_batch_size(
             cap = 4
         else:
             cap = 8
-    if not xformers_enabled:
+    if not sdpa_fused_only_active:
         cap = max(1, cap - 1)
     return cap
 
@@ -85,27 +91,174 @@ def _resolve_runtime_batch_size(
     except Exception:
         return requested
 
-    xformers_enabled = bool(getattr(pipeline, "_xformers_enabled", False))
+    sdpa_fused_only_active = bool(getattr(pipeline, "_sdpa_fused_only_active", False))
     recommended = _recommended_max_batch_size(
         resolution=config.resolution,
         total_vram_gib=total_vram_gib,
-        xformers_enabled=xformers_enabled,
+        sdpa_fused_only_active=sdpa_fused_only_active,
     )
     effective = min(requested, recommended)
     if effective < requested:
         logger.warning(
             (
                 "Capping batch_size from %d to %d for %.1f GiB VRAM at %dx%d "
-                "(xformers=%s) to avoid shared-memory fallback."
+                "(sdpa_fused_only=%s) to avoid shared-memory fallback."
             ),
             requested,
             effective,
             total_vram_gib,
             config.resolution,
             config.resolution,
-            xformers_enabled,
+            sdpa_fused_only_active,
         )
     return max(1, effective)
+
+
+def _sdpa_kernel_policy() -> dict[str, bool]:
+    """Return active SDPA kernel policy flags from torch CUDA backends."""
+    cuda_backend = getattr(torch.backends, "cuda", None)
+    if cuda_backend is None:
+        raise RuntimeError("CUDA backends are unavailable; SDPA fused-only mode requires CUDA.")
+
+    def _read_flag(name: str) -> bool:
+        getter = getattr(cuda_backend, name, None)
+        if getter is None:
+            return False
+        return bool(getter())
+
+    return {
+        "flash": _read_flag("flash_sdp_enabled"),
+        "mem_efficient": _read_flag("mem_efficient_sdp_enabled"),
+        "math": _read_flag("math_sdp_enabled"),
+    }
+
+
+def _assert_fused_sdpa_policy(policy: dict[str, bool]) -> None:
+    """Validate fused-only SDPA policy and raise clear errors when invalid."""
+    if policy["math"]:
+        raise RuntimeError(
+            "Invalid SDPA policy: math fallback is enabled; fused-only enforcement requires math=False."
+        )
+    if not (policy["flash"] or policy["mem_efficient"]):
+        raise RuntimeError(
+            "Invalid SDPA policy: no fused SDPA kernels enabled; expected flash and/or mem-efficient."
+        )
+
+
+def _configure_fused_sdpa_policy() -> dict[str, bool]:
+    """Enable fused SDPA kernels and disable math fallback."""
+    cuda_backend = getattr(torch.backends, "cuda", None)
+    if cuda_backend is None:
+        raise RuntimeError("CUDA backends are unavailable; cannot configure SDPA fused-only mode.")
+    for setter_name, enabled in (
+        ("enable_flash_sdp", True),
+        ("enable_mem_efficient_sdp", True),
+        ("enable_math_sdp", False),
+    ):
+        setter = getattr(cuda_backend, setter_name, None)
+        if setter is None:
+            raise RuntimeError(f"Missing torch CUDA SDPA control: {setter_name}")
+        setter(enabled)
+
+    policy = _sdpa_kernel_policy()
+    _assert_fused_sdpa_policy(policy)
+    return policy
+
+
+def _configure_sdpa_attention_backend(pipe: StableDiffusionXLPipeline) -> None:
+    """Force Diffusers attention processors onto the PyTorch SDPA path."""
+    try:
+        pipe.unet.set_default_attn_processor()
+    except Exception as exc:
+        raise RuntimeError(
+            "Failed to configure UNet for default SDPA attention processors."
+        ) from exc
+    vae = getattr(pipe, "vae", None)
+    if vae is not None and hasattr(vae, "set_default_attn_processor"):
+        try:
+            vae.set_default_attn_processor()
+        except Exception as exc:
+            raise RuntimeError(
+                "Failed to configure VAE for default SDPA attention processors."
+            ) from exc
+
+
+def _validate_fused_sdpa_runtime(device: torch.device, dtype: torch.dtype) -> None:
+    """Fail fast if fused-only SDPA cannot execute in the active runtime."""
+    q = torch.randn((1, 8, 64, 64), device=device, dtype=dtype)
+    try:
+        _ = torch.nn.functional.scaled_dot_product_attention(q, q, q)
+        torch.cuda.synchronize(device)
+    except Exception as exc:
+        raise RuntimeError(
+            "Fused SDPA preflight failed; fused-kernel acceleration is unavailable in this runtime."
+        ) from exc
+
+
+def _is_compiled_module(module: object | None) -> bool:
+    if module is None:
+        return False
+    return module.__class__.__name__ == "OptimizedModule"
+
+
+def _compile_unet_only(pipe: StableDiffusionXLPipeline, device: torch.device) -> bool:
+    """Compile only UNet for inference acceleration."""
+    if device.type != "cuda":
+        return False
+    if not hasattr(torch, "compile"):
+        raise RuntimeError("torch.compile is not available; UNet compile cannot be enabled.")
+    pipe.unet = torch.compile(
+        pipe.unet,
+        mode="reduce-overhead",
+        dynamic=False,
+        fullgraph=False,
+    )
+    if not _is_compiled_module(pipe.unet):
+        raise RuntimeError("UNet compile verification failed; expected compiled UNet module.")
+    for name in ("text_encoder", "text_encoder_2", "vae"):
+        if _is_compiled_module(getattr(pipe, name, None)):
+            raise RuntimeError(f"Only UNet may be compiled, but {name} appears compiled.")
+    if _is_compiled_module(getattr(pipe, "scheduler", None)):
+        raise RuntimeError("Only UNet may be compiled, but scheduler appears compiled.")
+    return True
+
+
+def _assert_cpu_offload_disabled(pipe: StableDiffusionXLPipeline) -> None:
+    """Ensure no CPU offload hooks are active for this optimization path."""
+    offload_hooks: list[str] = []
+    for name in ("unet", "text_encoder", "text_encoder_2", "vae"):
+        module = getattr(pipe, name, None)
+        if module is None:
+            continue
+        if getattr(module, "_hf_hook", None) is not None:
+            offload_hooks.append(name)
+    if offload_hooks:
+        joined = ", ".join(sorted(offload_hooks))
+        raise RuntimeError(
+            f"CPU offload must be disabled for SDPA optimization, found offload hooks on: {joined}"
+        )
+
+
+def _log_runtime_acceleration_state(
+    *,
+    device: torch.device,
+    policy: dict[str, bool],
+    unet_compiled: bool,
+) -> None:
+    """Emit structured startup state for acceleration debugging."""
+    logger.info(
+        "inference_runtime_state=%s",
+        json.dumps(
+            {
+                "attention_backend": "sdpa",
+                "device": device.type,
+                "sdpa_policy": policy,
+                "unet_compiled": unet_compiled,
+                "assumptions": DATABRICKS_A10G_ASSUMPTIONS,
+            },
+            sort_keys=True,
+        ),
+    )
 
 
 def load_pipeline(config: RunConfig) -> StableDiffusionXLPipeline:
@@ -125,14 +278,13 @@ def load_pipeline(config: RunConfig) -> StableDiffusionXLPipeline:
         )
 
     pipe = pipe.to(device)
-    xformers_enabled = False
+    _configure_sdpa_attention_backend(pipe)
+    unet_compiled = False
+    sdpa_policy = {"flash": False, "mem_efficient": False, "math": True}
     if device.type == "cuda":
-        try:
-            pipe.enable_xformers_memory_efficient_attention()
-            xformers_enabled = True
-            logger.info("Enabled xformers memory efficient attention")
-        except Exception as exc:
-            logger.warning("xformers not available, continuing without it: %s", exc)
+        sdpa_policy = _configure_fused_sdpa_policy()
+        _validate_fused_sdpa_runtime(device, dtype)
+        unet_compiled = _compile_unet_only(pipe, device)
         try:
             pipe.enable_attention_slicing("auto")
             logger.info("Enabled attention slicing")
@@ -148,7 +300,15 @@ def load_pipeline(config: RunConfig) -> StableDiffusionXLPipeline:
             logger.info("Enabled VAE tiling")
         except Exception as exc:
             logger.warning("Could not enable VAE tiling: %s", exc)
-    setattr(pipe, "_xformers_enabled", xformers_enabled)
+    _assert_cpu_offload_disabled(pipe)
+    setattr(pipe, "_attention_backend", "sdpa")
+    setattr(pipe, "_sdpa_fused_only_active", bool(device.type == "cuda"))
+    setattr(pipe, "_unet_compiled", unet_compiled)
+    _log_runtime_acceleration_state(
+        device=device,
+        policy=sdpa_policy,
+        unet_compiled=unet_compiled,
+    )
 
     pipe.set_progress_bar_config(disable=True)
     logger.info("Model loaded successfully")

@@ -174,6 +174,8 @@ PY
 ### Notes
 
 - On lower-memory GPUs (or MPS), SDXL at `1024x1024` may require reducing `batch_size`. The runtime now auto-caps effective batch size on CUDA based on VRAM and falls back to smaller micro-batches on OOM, so `batch_size` acts as an upper bound.
+- The CUDA optimization path uses PyTorch SDPA with fused kernels only (`math` fallback disabled), configures Diffusers default attention processors, compiles only UNet, and rejects CPU offload hooks.
+- Runtime assumptions for this path are Databricks A10G with PyTorch `2.3.1+cu121` and Diffusers `0.36.0`; startup emits an `inference_runtime_state=...` structured log with backend/policy/compile status.
 - Metadata exported per sample includes: `prompt`, `negative_prompt`, `seed`, `model_id`, `resolution`, `num_inference_steps`, `guidance_scale`, `scheduler`.
 
 ---

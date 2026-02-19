@@ -1,3 +1,7 @@
+# Runtime assumptions for SDPA optimization path:
+# - Databricks A10G
+# - PyTorch 2.3.1+cu121
+# - Diffusers 0.36.0
 model_id: "illustrious-xl-v2"
 prompts_path: "output/full/prompts.jsonl"
 workspace_dir: "output/images/workspace"

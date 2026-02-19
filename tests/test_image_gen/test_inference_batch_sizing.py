@@ -7,7 +7,7 @@ def test_recommended_max_batch_size_caps_10gb_sdxl_to_one():
     cap = _recommended_max_batch_size(
         resolution=1024,
         total_vram_gib=10.0,
-        xformers_enabled=True,
+        sdpa_fused_only_active=True,
     )
     assert cap == 1
 
@@ -16,16 +16,16 @@ def test_recommended_max_batch_size_allows_larger_batch_on_24gb():
     cap = _recommended_max_batch_size(
         resolution=1024,
         total_vram_gib=24.0,
-        xformers_enabled=True,
+        sdpa_fused_only_active=True,
     )
     assert cap == 4
 
 
-def test_recommended_max_batch_size_reduces_without_xformers():
+def test_recommended_max_batch_size_reduces_without_sdpa_fused_only():
     cap = _recommended_max_batch_size(
         resolution=1024,
         total_vram_gib=16.0,
-        xformers_enabled=False,
+        sdpa_fused_only_active=False,
     )
     assert cap == 2
 
