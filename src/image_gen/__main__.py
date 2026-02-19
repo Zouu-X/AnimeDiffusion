@@ -169,6 +169,8 @@ def main() -> None:
         level=logging.INFO,
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
+    for _noisy in ("torch._inductor", "torch._dynamo", "triton"):
+        logging.getLogger(_noisy).setLevel(logging.WARNING)
 
     args = parse_args()
     config = load_config(args.config)
