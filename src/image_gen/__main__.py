@@ -141,6 +141,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Output root directory (overrides report/workspace/shards dirs)",
     )
+    parser.add_argument(
+        "--checkpoint-path",
+        type=str,
+        default=None,
+        help="Checkpoint file path (overrides checkpoint_path from config)",
+    )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("plan", help="Build sample manifest from prompts")
@@ -165,6 +171,8 @@ def main() -> None:
         config = _apply_pilot(config)
     if args.output_path is not None:
         config = _apply_output_path(config, args.output_path)
+    if args.checkpoint_path is not None:
+        config.checkpoint_path = Path(args.checkpoint_path)
 
     commands = {
         "plan": cmd_plan,
