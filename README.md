@@ -26,6 +26,13 @@ python -m src.image_gen --pilot run
 
 # Full run (100K images)
 python -m src.image_gen run
+
+# Full run with CLI overrides
+python -m src.image_gen \
+  --prompts-path output/full/prompts.jsonl \
+  --checkpoint-path checkpoints/illustrious-xl-v2.safetensors \
+  --output-path output/images_custom \
+  run
 ```
 
 ---
@@ -112,6 +119,26 @@ Default config lives at `configs/image_gen/run_config.yaml`:
 3. `package` - WebDataset shard writing via `webdataset.TarWriter`
 4. `validate` - dataset gates (count, image integrity/resolution, metadata, ID coverage)
 5. `report` - writes run summary artifacts
+
+### CLI Overrides
+
+The image generation CLI supports runtime overrides for key file paths:
+
+| Flag | Description |
+|------|-------------|
+| `--prompts-path` | Input prompt JSONL path (overrides `prompts_path`) |
+| `--checkpoint-path` | Model checkpoint path (overrides `checkpoint_path`) |
+| `--output-path` | Output root directory (overrides `report_dir`, `workspace_dir`, and `shards_dir`) |
+
+Example:
+
+```bash
+python -m src.image_gen \
+  --prompts-path output/full/prompts.jsonl \
+  --checkpoint-path checkpoints/illustrious-xl-v2.safetensors \
+  --output-path output/images_custom \
+  run
+```
 
 ### Pilot Mode
 
