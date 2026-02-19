@@ -147,6 +147,12 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="Checkpoint file path (overrides checkpoint_path from config)",
     )
+    parser.add_argument(
+        "--prompts-path",
+        type=str,
+        default=None,
+        help="Input prompts JSONL path (overrides prompts_path from config)",
+    )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("plan", help="Build sample manifest from prompts")
@@ -173,6 +179,8 @@ def main() -> None:
         config = _apply_output_path(config, args.output_path)
     if args.checkpoint_path is not None:
         config.checkpoint_path = Path(args.checkpoint_path)
+    if args.prompts_path is not None:
+        config.prompts_path = Path(args.prompts_path)
 
     commands = {
         "plan": cmd_plan,
