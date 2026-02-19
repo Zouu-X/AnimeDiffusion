@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import logging
 import time
+from pathlib import Path
 
 import torch
 
@@ -21,6 +22,15 @@ def _apply_pilot(config: RunConfig) -> RunConfig:
     config.workspace_dir = config.workspace_dir.parent.parent / "images_pilot" / "workspace"
     config.shards_dir = config.workspace_dir.parent / "shards"
     config.report_dir = config.workspace_dir.parent
+    return config
+
+
+def _apply_output_path(config: RunConfig, output_path: Path | str) -> RunConfig:
+    """Override output directories using a single root path."""
+    output_root = Path(output_path)
+    config.report_dir = output_root
+    config.workspace_dir = output_root / "workspace"
+    config.shards_dir = output_root / "shards"
     return config
 
 
@@ -125,6 +135,12 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Pilot mode: generate 10 samples into output/images_pilot/",
     )
+    parser.add_argument(
+        "--output-path",
+        type=str,
+        default=None,
+        help="Output root directory (overrides report/workspace/shards dirs)",
+    )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("plan", help="Build sample manifest from prompts")
@@ -147,6 +163,8 @@ def main() -> None:
 
     if args.pilot:
         config = _apply_pilot(config)
+    if args.output_path is not None:
+        config = _apply_output_path(config, args.output_path)
 
     commands = {
         "plan": cmd_plan,
