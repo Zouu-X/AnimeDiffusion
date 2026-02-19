@@ -209,7 +209,7 @@ def _compile_unet_only(pipe: StableDiffusionXLPipeline, device: torch.device) ->
         raise RuntimeError("torch.compile is not available; UNet compile cannot be enabled.")
     pipe.unet = torch.compile(
         pipe.unet,
-        mode="reduce-overhead",
+        mode="max-autotune",
         dynamic=False,
         fullgraph=False,
     )
@@ -221,6 +221,35 @@ def _compile_unet_only(pipe: StableDiffusionXLPipeline, device: torch.device) ->
     if _is_compiled_module(getattr(pipe, "scheduler", None)):
         raise RuntimeError("Only UNet may be compiled, but scheduler appears compiled.")
     return True
+
+
+def _warmup_compiled_unet(
+    pipe: StableDiffusionXLPipeline,
+    config: RunConfig,
+    device: torch.device,
+    dtype: torch.dtype,
+) -> bool:
+    """Run a single dummy inference pass to trigger CUDA graph capture for compiled UNet."""
+    try:
+        logger.info("Running compiled UNet warmup pass (num_inference_steps=1)")
+        warmup_generator = torch.Generator(device="cpu").manual_seed(0)
+        pipe(
+            prompt="warmup",
+            negative_prompt="",
+            num_inference_steps=1,
+            guidance_scale=config.guidance_scale,
+            height=config.resolution,
+            width=config.resolution,
+            generator=warmup_generator,
+            output_type="latent",
+        )
+        torch.cuda.empty_cache()
+        logger.info("Compiled UNet warmup pass completed")
+        return True
+    except Exception as exc:
+        logger.warning("Compiled UNet warmup pass failed (non-fatal): %s", exc)
+        torch.cuda.empty_cache()
+        return False
 
 
 def _assert_cpu_offload_disabled(pipe: StableDiffusionXLPipeline) -> None:
@@ -244,6 +273,8 @@ def _log_runtime_acceleration_state(
     device: torch.device,
     policy: dict[str, bool],
     unet_compiled: bool,
+    attention_slicing_disabled: bool,
+    unet_warmup_done: bool,
 ) -> None:
     """Emit structured startup state for acceleration debugging."""
     logger.info(
@@ -251,9 +282,11 @@ def _log_runtime_acceleration_state(
         json.dumps(
             {
                 "attention_backend": "sdpa",
+                "attention_slicing_disabled": attention_slicing_disabled,
                 "device": device.type,
                 "sdpa_policy": policy,
                 "unet_compiled": unet_compiled,
+                "unet_warmup_done": unet_warmup_done,
                 "assumptions": DATABRICKS_A10G_ASSUMPTIONS,
             },
             sort_keys=True,
@@ -280,16 +313,21 @@ def load_pipeline(config: RunConfig) -> StableDiffusionXLPipeline:
     pipe = pipe.to(device)
     _configure_sdpa_attention_backend(pipe)
     unet_compiled = False
+    unet_warmup_done = False
     sdpa_policy = {"flash": False, "mem_efficient": False, "math": True}
     if device.type == "cuda":
         sdpa_policy = _configure_fused_sdpa_policy()
         _validate_fused_sdpa_runtime(device, dtype)
         unet_compiled = _compile_unet_only(pipe, device)
-        try:
+        if unet_compiled:
+            unet_warmup_done = _warmup_compiled_unet(pipe, config, device, dtype)
+        fused_active = sdpa_policy.get("flash", False) or sdpa_policy.get("mem_efficient", False)
+        if fused_active:
+            pipe.disable_attention_slicing()
+            logger.info("Disabled attention slicing (incompatible with SDPA fused kernels)")
+        else:
             pipe.enable_attention_slicing("auto")
-            logger.info("Enabled attention slicing")
-        except Exception as exc:
-            logger.warning("Could not enable attention slicing: %s", exc)
+            logger.info("Enabled attention slicing (SDPA fused kernels not active)")
         try:
             pipe.enable_vae_slicing()
             logger.info("Enabled VAE slicing")
@@ -300,6 +338,7 @@ def load_pipeline(config: RunConfig) -> StableDiffusionXLPipeline:
             logger.info("Enabled VAE tiling")
         except Exception as exc:
             logger.warning("Could not enable VAE tiling: %s", exc)
+    attention_slicing_disabled = sdpa_policy.get("flash", False) or sdpa_policy.get("mem_efficient", False)
     _assert_cpu_offload_disabled(pipe)
     setattr(pipe, "_attention_backend", "sdpa")
     setattr(pipe, "_sdpa_fused_only_active", bool(device.type == "cuda"))
@@ -308,6 +347,8 @@ def load_pipeline(config: RunConfig) -> StableDiffusionXLPipeline:
         device=device,
         policy=sdpa_policy,
         unet_compiled=unet_compiled,
+        attention_slicing_disabled=attention_slicing_disabled,
+        unet_warmup_done=unet_warmup_done,
     )
 
     pipe.set_progress_bar_config(disable=True)
