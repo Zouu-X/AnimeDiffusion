@@ -119,6 +119,15 @@ def cmd_run(config: RunConfig) -> None:
         logger.warning("Run complete: validation FAILED — see run_report.json")
 
 
+def cmd_regenerate(config: RunConfig, manifest_path: Path) -> None:
+    from .inference import load_pipeline
+    from .regenerator import regenerate
+
+    pipeline = load_pipeline(config)
+    regenerate(config, pipeline, manifest_path)
+    logger.info("Regenerate stage complete")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="image_gen",
@@ -161,6 +170,16 @@ def parse_args() -> argparse.Namespace:
     subparsers.add_parser("validate", help="Run validation gates on packaged shards")
     subparsers.add_parser("run", help="Execute all stages in sequence")
 
+    regen_sub = subparsers.add_parser(
+        "regenerate", help="Regenerate non-frontal images from face_wash manifest"
+    )
+    regen_sub.add_argument(
+        "--manifest",
+        type=str,
+        required=True,
+        help="Path to JSONL manifest from face_wash (e.g. clean_manifest.jsonl)",
+    )
+
     return parser.parse_args()
 
 
@@ -191,7 +210,11 @@ def main() -> None:
         "validate": cmd_validate,
         "run": cmd_run,
     }
-    commands[args.command](config)
+    if args.command == "regenerate":
+        manifest_path = Path(args.manifest)
+        cmd_regenerate(config, manifest_path)
+    else:
+        commands[args.command](config)
 
 
 main()
